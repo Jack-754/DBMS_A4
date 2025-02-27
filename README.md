@@ -43,6 +43,7 @@ Login, login out , registration, Session,
 app.py
 endpoint.txt
 
+##USE THE EXISTING CODE AS TEMPLATE FOR CREATING REQUIRED ENDPOINTS
 
 
 

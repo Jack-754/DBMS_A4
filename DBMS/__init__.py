@@ -2,7 +2,6 @@ from flask import Flask, jsonify
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager
 from flask_mail import Mail
-import psycopg2
 
 app = Flask(__name__)
 

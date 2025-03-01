@@ -1,8 +1,7 @@
-from DBMS import login_manager,app
+from DBMS import login_manager, app
 from flask_login import UserMixin
-from itsdangerous import URLSafeTimedSerializer as Serializer
-from datetime import datetime, timedelta,time
-from run import conn
+from datetime import datetime
+from run import conn  # Ensure 'conn' is properly initialized in 'run'
 import psycopg2
 
 @login_manager.user_loader
@@ -10,33 +9,32 @@ def loadUser(userId):
     return User.get_user_by_id(userId)
 
 class User(UserMixin):
-    def __init__(self, user_id, username, citizen_id, type):
-        self.id = user_id  # Required by Flask-Login
+    def __init__(self, userId, username, citizen_id, type):
+        self.id = userId  # Required by Flask-Login
         self.username = username
         self.citizen_id = citizen_id
         self.type = type
 
     @staticmethod
-    def get_user_by_id(user_id):
+    def get_user_by_id(userId):
         """Fetch user from PostgreSQL by ID."""
         cur = conn.cursor()
-        # query needs to be modified
-        cur.execute("SELECT id, username, email FROM users WHERE id = %s", (user_id,))
+        cur.execute("SELECT id, username, citizen_id, type FROM users WHERE id = %s", (userId,))
         user_data = cur.fetchone()
         cur.close()
 
         if user_data:
-            return User(*user_data)
+            return User(user_data[0], user_data[1], user_data[2], user_data[3])
         return None
 
     @staticmethod
-    def authenticate(username, password):
-        """Check if username and password match a record in the database."""
+    def authenticate(userId, password):
+        """Check if userId and password match a record in the database."""
         cur = conn.cursor()
-        cur.execute("SELECT id, username, email, password FROM users WHERE username = %s", (username,))
+        cur.execute("SELECT id, username, citizen_id, type, password FROM users WHERE id = %s", (userId,))
         user_data = cur.fetchone()
         cur.close()
 
-        if user_data and user_data[3] == password:  # Ideally, hash passwords instead of plain-text comparison
-            return User(user_data[0], user_data[1], user_data[2])
+        if user_data and user_data[4] == password:  # Ideally, hash and verify passwords
+            return User(user_data[0], user_data[1], user_data[2], user_data[3])
         return None

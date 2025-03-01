@@ -11,32 +11,6 @@ from itsdangerous import URLSafeTimedSerializer as Serializer
 from run import conn
 import psycopg2
 
-global start
-global end
-start=time(16, 0)
-end=time(21, 0)
-
-# Checks if the given time is between the start and end times.
-#
-# Args:
-#   start_time (datetime.time): The start time to check against. 
-#   end_time (datetime.time): The end time to check against.
-#
-# Returns:
-#   bool: True if check_time is between start_time and end_time, False otherwise.
-
-def is_time_between(start_time, end_time):
-    check_time = datetime.now().time()
-    return start_time <= check_time <= end_time
-
-
-# Returns the next available unique ID by counting all Users, Restaurants, and adding 1. 
-
-# This provides a simple way to get a unique numeric ID for new objects.
-
-def identity():
-    return len(User.query.all())+len(Restaurant.query.all())+1
-
 # Renders the home page. 
 # If the user is authenticated and an admin, redirects to the admin page.
 # If the user is authenticated but has no location set, flashes a warning to set location and redirects to account page.
@@ -62,10 +36,6 @@ def home():
     transactions = Transaction.query.all()
     return render_template('home.html', restaurants=restaurants,title='Home',calculate_distance=calculate_distance,transactions=transactions)
 
-   
-# Checks if the current user is an admin and redirects them to the admin page.
-# 
-# If the current user is not admin, redirects to the home page.
 
 @app.route("/admin")
 @login_required

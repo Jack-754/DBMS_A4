@@ -8,9 +8,8 @@ from DBMS.forms import RestaurantRegistrationForm, UserRegistrationForm, LoginFo
 from DBMS.models import Restaurant, User, Dish, Transaction, Order, Donation,Time
 from flask_login import login_user, current_user, logout_user, login_required
 from itsdangerous import URLSafeTimedSerializer as Serializer
-from flask_mail import Message
-from math import radians, sin, cos, sqrt, atan2, ceil
 from run import conn
+import psycopg2
 
 global start
 global end
@@ -671,31 +670,6 @@ def place_order():
     transaction.date = datetime.now()
     db.session.commit()
     return jsonify({'success': True, 'total_price': discounted_amount,'check':check}), 200
- 
-
-
-# Function for calculating distance between two locations on a map
-def calculate_distance(lat1, lon1, lat2, lon2):
-    # Radius of the Earth in kilometers
-    R = 6371.0
-    
-    # Convert latitude and longitude from degrees to radians
-    lat1 = radians(lat1)
-    lon1 = radians(lon1)
-    lat2 = radians(lat2)
-    lon2 = radians(lon2)
-    
-    # Calculate the change in coordinates
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    
-    # Calculate the distance using Haversine formula
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    distance = R * c
-    
-    return distance
-
 
 # Function for making payments
 @app.route('/payment/<int:amount>',methods=['GET','POST'])

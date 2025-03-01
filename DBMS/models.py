@@ -1,20 +1,4 @@
-# This file is for defining classes for each of the different types of entities in the SSFDS application.
-
-# Restaurant - Represents a restaurant user account. Used to manage restaurant profiles and post available dishes.
-
-# User - Represents an individual user account. Used to manage donor profiles and donate to posted dishes. 
-
-# Dish - Represents a meal or food item posted by a restaurant. Contains dish details.
-
-# Transaction - Records donation transactions made by users to dishes. Tracks donation amounts.
-
-# Order - Records food orders made by users for posted dishes. Tracks order status.
-
-# Donation - Records monetary donations made by users. Tracks donation amounts.
-
-# Time - Defines time slots for dish availability and food orders. 
-
-from DBMS import db, login_manager,app
+from DBMS import login_manager,app
 from flask_login import UserMixin
 from itsdangerous import URLSafeTimedSerializer as Serializer
 from datetime import datetime, timedelta,time
@@ -48,12 +32,10 @@ class User(UserMixin):
     @staticmethod
     def authenticate(username, password):
         """Check if username and password match a record in the database."""
-        conn = psycopg2.connect("dbname=your_db user=your_user password=your_password host=your_host")
         cur = conn.cursor()
         cur.execute("SELECT id, username, email, password FROM users WHERE username = %s", (username,))
         user_data = cur.fetchone()
         cur.close()
-        conn.close()
 
         if user_data and user_data[3] == password:  # Ideally, hash passwords instead of plain-text comparison
             return User(user_data[0], user_data[1], user_data[2])

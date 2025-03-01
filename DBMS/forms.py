@@ -13,7 +13,6 @@ from DBMS import bcrypt
 # Contains fields for name, email, address, password,
 # and password confirmation. Validates that email is not
 # already in use by another restaurant or user.
-
 class RestaurantRegistrationForm(FlaskForm):
     username = StringField('Name',
                            validators=[DataRequired(), Length(min=2, max=20)])

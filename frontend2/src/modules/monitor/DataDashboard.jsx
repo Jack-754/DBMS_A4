@@ -1,4 +1,5 @@
 import React from 'react';
+import DataTable from '../../components/DataTable';
 
 const DataDashboard = () => {
   return (
@@ -7,6 +8,7 @@ const DataDashboard = () => {
       <div>
         {/* Add data visualization components here */}
         <div className="statistics">
+          <DataTable />
           {/* Add charts, graphs, and statistics */}
         </div>
       </div>

@@ -1,0 +1,32 @@
+.data-table-container {
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-controls {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.error-message {
+    color: #dc3545;
+    padding: 10px;
+    border: 1px solid #dc3545;
+    border-radius: 4px;
+    margin: 10px 0;
+    background-color: #f8d7da;
+}
+
+/* Loading spinner */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    font-size: 1.2em;
+    color: #666;
+} 

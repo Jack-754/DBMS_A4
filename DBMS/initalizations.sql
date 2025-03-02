@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
    citizen_id INT,
    CONSTRAINT citizen_id_required CHECK (
        (type IN ('USER', 'PANCHAYAT_EMPLOYEES') AND citizen_id IS NOT NULL) OR
-       (type IN ('GOVERNMENT_MONITOR', 'SYSTEM_ADMINISTRATOR') AND citizen_id IS NULL)
+       (type IN ('SYSTEM_ADMINISTRATOR') AND citizen_id IS NULL)
    ),
    FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE SET NULL
 );
@@ -118,6 +118,8 @@ CREATE TABLE IF NOT EXISTS panchayat_employees (
     FOREIGN KEY (village_id) REFERENCES village(id) ON DELETE CASCADE,
     CONSTRAINT unique_pradhan_per_village UNIQUE (village_id) WHERE (position = 'PRADHAN')
 );
+
+
 
 
 -- -- USERS TABLE

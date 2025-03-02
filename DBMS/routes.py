@@ -13,65 +13,118 @@ from DBMS import app
 
 @app.route('/login', methods=['POST'])
 def post_example():
-    response = {
-        'status': None,
-        'message': None,
-        'data': None
-    }
-    
-    # Get JSON data from request
-    data = request.form
-    
-    # Validate required fields
-    if not data or 'userId' not in data or 'password' not in data:
-        response['status'] = 400
-        response['message'] = 'Missing required fields: userId and password'
-        return jsonify(response)
-    
-    # Authenticate user
-    user = User.authenticate(data['userId'], data['password'])
-    
-    if user:
-        # Login the user with Flask-Login
-        login_user(user)
+    try:
+        data = request.get_json()
         
-        response['status'] = 200
-        response['message'] = 'Login successful'
-        response['data'] = {
-            'userId': user.id,
-            'username': user.username,
-            'type': user.type
-        }
-    else:
-        response['status'] = 401
-        response['message'] = 'Invalid credentials'
-
-    return jsonify(response)
+        # Validate required fields
+        if not data or 'Data' not in data or 'userId' not in data['Data'] or 'password' not in data['Data']:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Missing required fields: userId and password",
+                "Data": {
+                    "Query": "LOGIN",
+                    "Result": []
+                },
+                "error": "Missing required fields"
+            }), 400
+        
+        # Authenticate user
+        user = User.authenticate(data['Data']['userId'], data['Data']['password'])
+        
+        if user:
+            # Login the user with Flask-Login
+            login_user(user)
+            
+            return jsonify({
+                "Status": "Success",
+                "Message": "Login successful",
+                "Data": {
+                    "Query": "LOGIN",
+                    "Result": [{
+                        "userId": user.id,
+                        "username": user.username,
+                        "type": user.type
+                    }]
+                },
+                "error": None
+            }), 200
+        else:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid credentials",
+                "Data": {
+                    "Query": "LOGIN",
+                    "Result": []
+                },
+                "error": "Authentication failed"
+            }), 401
+    except Exception as e:
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Server error during login",
+            "Data": {
+                "Query": "LOGIN",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
 
 @app.route('/register', methods=['POST'])
 def register():
-    response = {'status': None, 'message': None}
-
     if current_user.is_authenticated:
-        response.update({'status': 400, 'message': 'User already logged in'})
-        return jsonify(response)
+
+        response.update({
+            "status": "Failed",
+            "message": "User already logged in",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": "User already logged in"
+            })
+        return jsonify(response),400
 
     try:
         data = request.get_json()
         if not data:
-            response.update({'status': 400, 'message': 'Invalid JSON data'})
-            return jsonify(response)
+            response.update({"status": "Failed",
+            "message": "Invalid JSON data",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": "Invalid JSON data"
+            })
+            return jsonify(response), 400
 
         required_fields = ['citizen_id', 'username', 'password']
         if not all(field in data and data[field] for field in required_fields):
-            response.update({'status': 400, 'message': 'Missing required fields'})
-            return jsonify(response)
+            response.update({
+                "status": "Failure",
+                "message": "Missing required fields",
+                "Data": {
+                    "Query" : "register",
+                    "Data" : []
+                },
+                "error": "Missing required fields"
+            })
+            return jsonify(response), 400
 
-        citizen_id, username, password = data['citizen_id'], data['username'], data['password']
+
+        citizen_id, username, password = data['Data']['citizen_id'], data['Data']['username'], data['Data']['password']
 
         if len(username) < 3 or len(password) < 6:
-            response.update({'status': 400, 'message': 'Invalid username or password length'})
-            return jsonify(response)
+
+            response.update({
+                "status": "Failure",
+                "message": "Invalid username or password length",
+                "Data": {
+                    "Query" : "register",
+                    "Data" : []
+                },
+                "error": "Invalid username or password length"
+            })
+            return jsonify(response), 400
 
         # Use psycopg2 cursor
         with conn.cursor() as cur:
@@ -81,21 +134,47 @@ def register():
 
             if existing_user:
                 field = 'Citizen ID' if existing_user[0] == citizen_id else 'Username'
-                response.update({'status': 400, 'message': f'{field} already registered'})
-                return jsonify(response)
 
+                response.update({
+                    "status": "Failure",
+                    "message": f'{field} already registered',
+                    "Data": {
+                        "Query" : "register",
+                        "Data" : []
+                    },
+                    "error": f'{field} already registered'
+                })
+                return jsonify(response), 400
+  
             cur.execute("INSERT INTO users (citizen_id, username, password, type) VALUES (%s, %s, %s, %s)",
                         (citizen_id, username, password, 'USER'))
             conn.commit()
 
-        response.update({'status': 201, 'message': 'User registered successfully'})
-        
+
+        response.update({
+            "status": "Success",
+            "message": "User registered successfully",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": None
+        })
+        return jsonify(response), 200
     except Exception as e:
         conn.rollback()
         print(f"Registration error: {str(e)}")
-        response.update({'status': 500, 'message': 'Internal server error'})
+        response.update({
+            "status": "Failure",
+            "message": "Internal server error",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": str(e)
+        })
+        return jsonify(response), 500
 
-    return jsonify(response)
 
 def get_citizen_profile(citizen_id):
     conn = psycopg2.connect(
@@ -127,12 +206,40 @@ def get_citizen_profile(citizen_id):
 @app.route('/citizen/profile', methods=['POST'])
 @login_required
 def citizen_profile():
-    user_id = current_user.id
-    profile = get_citizen_profile(user_id)
-    if profile:
-        return jsonify(profile)
-    else:
-        return jsonify({'error': 'Citizen not found'}), 404
+    try:
+        user_id = current_user.id
+        profile = get_citizen_profile(user_id)
+        if profile:
+            return jsonify({
+                "Status": "Success",
+                "Message": "Profile fetched successfully",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": [profile]
+                },
+                "error": None
+            }), 200
+        else:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Citizen not found",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": []
+                },
+                "error": "Not found"
+            }), 404
+    except Exception as e:
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error fetching profile",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+
 
 def get_citizen_assets(owner_id):
     cursor = conn.cursor()
@@ -154,12 +261,39 @@ def get_citizen_assets(owner_id):
 @app.route('/citizen/assets', methods=['POST'])
 @login_required
 def citizen_assets():
-    user_id = current_user.id
-    assets = get_citizen_assets(user_id)
-    if assets:
-        return jsonify(assets)
-    else:
-        return jsonify({'error': 'No assets with user found'}), 404
+    try:
+        user_id = current_user.id
+        assets = get_citizen_assets(user_id)
+        if assets:
+            return jsonify({
+                "Status": "Success",
+                "Message": "Assets fetched successfully",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": assets
+                },
+                "error": None
+            }), 200
+        else:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "No assets with user found",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": []
+                },
+                "error": "Not found"
+            }), 404
+    except Exception as e:
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error fetching assets",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
 
 def get_citizen_tax_filings(citizen_id):
     cursor = conn.cursor()
@@ -186,9 +320,15 @@ def citizen_tax_filings():
     user_id = current_user.id
     tax_filings = get_citizen_tax_filings(user_id)
     if tax_filings:
-        return jsonify(tax_filings)
-    else:
-        return jsonify({'error': 'No tax filings found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Tax filings retrieved successfully",
+            "Data": {
+                "Query": "get_tax_filings",
+                "Result": [tax_filings]
+            },
+            "error": None
+        }), 200
 
 def get_citizen_certificates(citizen_id):
     cursor = conn.cursor()
@@ -214,9 +354,15 @@ def citizen_certificates():
     user_id = current_user.id
     certificates = get_citizen_certificates(user_id)
     if certificates:
-        return jsonify(certificates)
-    else:
-        return jsonify({'error': 'No certificates found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Certificates retrieved successfully",
+            "Data": {
+                "Query": "get_certificates",
+                "Result": [certificates]
+            },
+            "error": None
+        }), 200
 
 def get_citizen_schemes(citizen_id):
     cursor = conn.cursor()
@@ -242,27 +388,47 @@ def citizen_enrolled_schemes():
     user_id = current_user.id
     schemes = get_citizen_schemes(user_id)
     if schemes:
-        return jsonify(schemes)
-    else:
-        return jsonify({'error': 'No scheme enrollments found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Scheme enrollments retrieved successfully",
+            "Data": {
+                "Query": "get_enrolled_schemes",
+                "Result": [schemes]
+            },
+            "error": None
+        }), 200
 
 @app.route('/query_table', methods=['POST'])
 @login_required
 def query_table():
     try:
         data = request.get_json()
+        
+        if not data or 'Query' not in data or 'Data' not in data:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": []
+                },
+                "error": "Invalid request format"
+            }), 400
 
         # Extract table name and filters from request
-        table_name = data.get('table_name')
-        filters = data.get('filters', {})
+        table_name = data['Data'].get('table_name')
+        filters = data['Data'].get('filters', {})
 
         # Basic SQL injection prevention for table name
         if not table_name or not table_name.isalnum():
             return jsonify({
-                'status': 'error',
-                'status_code': 400,
-                'message': 'Invalid table name',
-                'data': None
+                "Status": "Failed",
+                "Message": "Invalid table name",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": []
+                },
+                "error": "Invalid table name"
             }), 400
 
         # Construct the SQL query
@@ -285,10 +451,14 @@ def query_table():
             for key, filter_data in filters.items():
                 if not key.isalnum():  # Basic SQL injection prevention
                     return jsonify({
-                        'status': 'error',
-                        'status_code': 400,
-                        'message': 'Invalid filter field',
-                        'data': None
+
+                        "Status": "Failed",
+                        "Message": "Invalid filter field",
+                        "Data": {
+                            "Query": "SELECT",
+                            "Result": []
+                        },
+                        "error": "Invalid filter field"
                     }), 400
 
                 operator = filter_data.get('operator', 'eq')  # Default to equals
@@ -296,20 +466,27 @@ def query_table():
 
                 if operator not in valid_operators:
                     return jsonify({
-                        'status': 'error',
-                        'status_code': 400,
-                        'message': f'Invalid operator: {operator}',
-                        'data': None
+                        "Status": "Failed",
+                        "Message": f'Invalid operator: {operator}',
+                        "Data": {
+                            "Query": "SELECT",
+                            "Result": []
+                        },
+                        "error": f"Invalid operator: {operator}"
                     }), 400
 
                 if operator == 'between':
                     if not isinstance(value, list) or len(value) != 2:
                         return jsonify({
-                            'status': 'error',
-                            'status_code': 400,
-                            'message': 'BETWEEN operator requires a list of two values',
-                            'data': None
+                            "Status": "Failed",
+                            "Message": "BETWEEN operator requires a list of two values",
+                            "Data": {
+                                "Query": "SELECT",
+                                "Result": []
+                            },
+                            "error": "BETWEEN operator requires a list of two values"
                         }), 400
+
                     where_conditions.append(f"{key} BETWEEN %s AND %s")
                     params.extend(value)
                 else:
@@ -321,22 +498,34 @@ def query_table():
         # Execute query
         with conn.cursor() as cur:
             cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
             results = cur.fetchall()
+            
+            # Format the results as list of dictionaries
+            formatted_results = []
+            for row in results:
+                formatted_results.append({columns[i]: value for i, value in enumerate(row)})
 
         return jsonify({
-            'status': 'success',
-            'status_code': 200,
-            'message': 'Query executed successfully',
-            'data': results
-        })
+            "Status": "Success",
+            "Message": "Query executed successfully",
+            "Data": {
+                "Query": query,
+                "Result": formatted_results
+            },
+            "error": None
+        }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'status_code': 500,
-            'message': str(e),
-            'data': None
+            "Status": "Failed",
+            "Message": "Error executing query",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
         }), 500
     
 @app.route('/update', methods=['POST'])
@@ -345,16 +534,32 @@ def update_record():
         data = request.get_json()
 
         # Validate required fields
-        if not all(key in data for key in ['table_name', 'filters', 'new_values']):
+        if not data or 'Query' not in data or data['Query'] != 'UPDATE' or 'Data' not in data:
             return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields',
-                'status_code': 400
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "UPDATE",
+                    "Result": []
+                },
+                "error": "Invalid request format"
             }), 400
 
-        table_name = data['table_name']
-        filters = data['filters']
-        new_values = data['new_values']
+        request_data = data['Data']
+        if not all(key in request_data for key in ['table_name', 'filters', 'new_values']):
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Missing required fields",
+                "Data": {
+                    "Query": "UPDATE",
+                    "Result": []
+                },
+                "error": "Missing required fields"
+            }), 400
+
+        table_name = request_data['table_name']
+        filters = request_data['filters']
+        new_values = request_data['new_values']
 
         # Construct UPDATE query
         set_clause = ', '.join([f"{key} = %s" for key in new_values.keys()])
@@ -370,17 +575,25 @@ def update_record():
         conn.commit()
 
         return jsonify({
-            'status': 'success',
-            'message': f'Updated {affected_rows} rows successfully',
-            'status_code': 200
+            "Status": "Success",
+            "Message": f"Updated {affected_rows} rows successfully",
+            "Data": {
+                "Query": "UPDATE",
+                "Result": [{"affected_rows": affected_rows}]
+            },
+            "error": None
         }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'status_code': 500
+            "Status": "Failed",
+            "Message": "Error updating record",
+            "Data": {
+                "Query": "UPDATE",
+                "Result": []
+            },
+            "error": str(e)
         }), 500
     finally:
         if 'cursor' in locals():

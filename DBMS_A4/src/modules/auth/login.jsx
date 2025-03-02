@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './auth.css';
 
 // import { callAPI } from '../../services/ApiHelper'
@@ -47,18 +47,19 @@ const Login = ({ className, onBackClick }) => {
     }, {
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
-      // withCredentials: true
+      withCredentials: true
     });
     console.log("response",response);
     if(response.data.Status === "Success"){
       // localStorage.setItem('name', response.data.firstName); // Example: Store token
       localStorage.setItem('user_id', response.data.Data.Result[0].userId);
       localStorage.setItem('user_type', response.data.Data.Result[0].type);
+      localStorage.setItem('token', response.data.token);
 
       console.log("response.data.userType", localStorage.getItem('user_type'));
-      navigate('/schemes');
+      navigate('/profile');
       // window.location.href = '/app';
       setErrors('');
     }

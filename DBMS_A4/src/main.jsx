@@ -11,22 +11,32 @@ import Schemes from './modules/schemes/schemes.jsx'
 import AuthPage from './modules/auth/authPage.jsx'
 // import Expenses from './modules/expenses/expenses.jsx'
 import DataDashboard from './modules/monitor/DataDashboard.jsx'
+import { useState, useEffect } from "react";
+
 
 
 // Protected Route with role check
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  // Replace these with your actual auth checks
-  const isAuthenticated = localStorage.getItem('token') !== null;
-  const userType = localStorage.getItem('user_type');
-  
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [userType, setUserType] = useState(null);
+
+  useEffect(() => {
+    setIsAuthenticated(localStorage.getItem("token") !== null);
+    setUserType(localStorage.getItem("user_type"));
+  }, []);
+
+  if (isAuthenticated === null) {
+    return <div>Loading...</div>; // Avoid premature navigation
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  
+
   if (!allowedRoles.includes(userType)) {
     return <Navigate to="/app/dashboard" replace />;
   }
-  
+
   return children;
 };
 
@@ -56,34 +66,34 @@ const router = createBrowserRouter([
       //   element: <Dashboard />
       // },
       // Citizen Routes
-  {
-    path: "/profile",
-    element: <ProtectedRoute allowedRoles={['USER', 'admin', 'govt_monitor', 'govt_employee']}>
-      <Profile type={localStorage.getItem('user_type')} /> {/* Will show vaccination, IT, personal details, assets, certificates */}
-    </ProtectedRoute>
-  },
-  {
-    path: "/schemes",
-    element: <ProtectedRoute allowedRoles={['USER']}>
-      <Schemes />
-    </ProtectedRoute>
-  },
-  // Admin Routes
-  {
-    path: "/users",
-    element: <ProtectedRoute allowedRoles={['admin', 'govt_employee']}>
-      <Users canEdit canDelete />
-    </ProtectedRoute>
-  },
+      {
+        path: "/profile",
+        element: <ProtectedRoute allowedRoles={['USER', 'admin', 'govt_monitor', 'govt_employee']}>
+          <Profile type={localStorage.getItem('user_type')} /> {/* Will show vaccination, IT, personal details, assets, certificates */}
+        </ProtectedRoute>
+      },
+      {
+        path: "/schemes",
+        element: <ProtectedRoute allowedRoles={['USER']}>
+          <Schemes />
+        </ProtectedRoute>
+      },
+      // Admin Routes
+      {
+        path: "/users",
+        element: <ProtectedRoute allowedRoles={['admin', 'govt_employee']}>
+          <Users canEdit canDelete />
+        </ProtectedRoute>
+      },
 
-  {
-    path: "/data",
-    element: <ProtectedRoute allowedRoles={['govt_monitor']}>
-      <DataDashboard />
-    </ProtectedRoute>
-  },
-  // Govt Employee Routes
-  
+      {
+        path: "/data",
+        element: <ProtectedRoute allowedRoles={['govt_monitor']}>
+          <DataDashboard />
+        </ProtectedRoute>
+      },
+      // Govt Employee Routes
+    
   
 ])
 

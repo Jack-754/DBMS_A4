@@ -1,10 +1,24 @@
 import React from 'react';
+import axios from 'axios';
+import { useEffect } from 'react';
 
 const Profile = ({ type }) => {
-    console.log("type", type);
-  const renderContent = () => {
-    switch(type) {
-      case 'USER':
+    useEffect(() => {
+
+        const token = localStorage.getItem('token');
+        console.log("token", token);
+      axios.get(import.meta.env.VITE_APP_URI + '/profile', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Accept': 'application/json'
+        }
+      }).then(response => {
+        console.log("response", response);
+      });
+    }, []);
+    const renderContent = () => {
+        switch(type) {
+            case 'USER':
         return (
           <>
             <h2>Citizen Profile</h2>

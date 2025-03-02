@@ -11,7 +11,6 @@ import psycopg2
 from DBMS import app
 
 
-
 @app.route('/login', methods=['POST'])
 def post_example():
     response = {

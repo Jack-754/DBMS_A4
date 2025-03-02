@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS certificates (
 -- ASSETS TABLE
 CREATE TABLE IF NOT EXISTS assets (
     asset_id SERIAL PRIMARY KEY,
-    type VARCHAR(50) NOT NULL,
+    a_type VARCHAR(50) NOT NULL,
     date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE,
     owner_id INT NOT NULL,
     FOREIGN KEY (owner_id) REFERENCES citizens(id) ON DELETE CASCADE
@@ -117,6 +117,15 @@ CREATE TABLE IF NOT EXISTS panchayat_employees (
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE,
     FOREIGN KEY (village_id) REFERENCES village(id) ON DELETE CASCADE,
     CONSTRAINT unique_pradhan_per_village UNIQUE (village_id) WHERE (position = 'PRADHAN')
+);
+
+CREATE TABLE IF NOT EXISTS scheme_enrollment (
+    enrollment_id SERIAL PRIMARY KEY,
+    citizen_id INT NOT NULL,
+    scheme_id INT NOT NULL,
+    enrollment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE,
+    FOREIGN KEY (scheme_id) REFERENCES schemes(id) ON DELETE CASCADE
 );
 
 

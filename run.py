@@ -1,4 +1,4 @@
-# Run the Flask application.
+# Run the Flask application....
 
 from DBMS import app
 from DBMS.functionals.connectdb import connect_to_database,execute_sql_file

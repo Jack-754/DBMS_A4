@@ -471,3 +471,9 @@ def delete_record():
     finally:
         if 'cursor' in locals():
             cursor.close()
+
+
+
+
+
+

@@ -8,7 +8,7 @@ from flask_login import login_user, current_user, logout_user, login_required
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from run import conn
 import psycopg2
-from DBMS import app, create_jwt, decode_jwt, token_given   
+from DBMS import app
 
 
 @app.route("/logout")
@@ -27,7 +27,6 @@ def logout():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-        global token_given
         data = request.get_json()
         print(f"Received data is: \n {data}")
         if not data or "Data" not in data or 'userId' not in data['Data'] or 'password' not in data['Data']:
@@ -43,12 +42,8 @@ def login():
         user = User.authenticate(data['Data']['userId'], data['Data']['password'])
         if user:
             login_user(user)
-            access_token = create_jwt(user.id)
-            if access_token is None:
-                print("Error creating token")
-            token_given = access_token
-
-            print("*****************",token_given)
+            access_token = create_access_token(identity=user.id)
+            print(access_token)
             return jsonify({
                 "Status": "Success",
                 "Message": "Login successful",
@@ -125,7 +120,7 @@ def register():
 
 
         citizen_id, username, password = data['Data']['citizen_id'], data['Data']['username'], data['Data']['password']
-        
+
         if len(username) < 3 or len(password) < 6:
             response.update({
                 "status": "Failure",
@@ -216,24 +211,11 @@ def get_citizen_profile(citizen_id):
         return None
 
 @app.route('/profile', methods=['GET'])
+@jwt_required()
 def citizen_profile():
-    auth_header = request.headers.get("Authorization")
-    if not auth_header:
-        return jsonify({"error": "Missing Authorization header"}), 401
     try:
-        print(auth_header)
-        token = auth_header.split(" ")[1] 
-        print(token,type(token))
-        print(token_given,type(token_given))
-        if(token == token_given):
-            print("Token is valid")
-        decoded_token = decode_jwt(token)
-        print(decoded_token)
-        if "error" in decoded_token:
-            return jsonify(decoded_token), 401
-
-        user_id = decoded_token.get("sub")  
-
+        print(request.headers)
+        user_id = get_jwt_identity()
         print(user_id)
         profile = get_citizen_profile(user_id)
         if profile:

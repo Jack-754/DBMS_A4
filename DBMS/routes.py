@@ -72,53 +72,59 @@ def post_example():
 @app.route('/register', methods=['POST'])
 def register():
     if current_user.is_authenticated:
-        return jsonify({
-            "Status": "Failed",
-            "Message": "User already logged in",
+
+        response.update({
+            "status": "Failed",
+            "message": "User already logged in",
             "Data": {
-                "Query": "REGISTER",
-                "Result": []
+                "Query" : "register",
+                "Data" : []
             },
-            "error": "Already authenticated"
-        }), 400
+            "error": "User already logged in"
+            })
+        return jsonify(response),400
 
     try:
         data = request.get_json()
-        if not data or 'Data' not in data:
-            return jsonify({
-                "Status": "Failed",
-                "Message": "Invalid JSON data",
-                "Data": {
-                    "Query": "REGISTER",
-                    "Result": []
-                },
-                "error": "Invalid data format"
-            }), 400
+        if not data:
+            response.update({"status": "Failed",
+            "message": "Invalid JSON data",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": "Invalid JSON data"
+            })
+            return jsonify(response), 400
 
         required_fields = ['citizen_id', 'username', 'password']
-        if not all(field in data['Data'] and data['Data'][field] for field in required_fields):
-            return jsonify({
-                "Status": "Failed",
-                "Message": "Missing required fields",
+        if not all(field in data and data[field] for field in required_fields):
+            response.update({
+                "status": "Failure",
+                "message": "Missing required fields",
                 "Data": {
-                    "Query": "REGISTER",
-                    "Result": []
+                    "Query" : "register",
+                    "Data" : []
                 },
                 "error": "Missing required fields"
-            }), 400
+            })
+            return jsonify(response), 400
+
 
         citizen_id, username, password = data['Data']['citizen_id'], data['Data']['username'], data['Data']['password']
 
         if len(username) < 3 or len(password) < 6:
-            return jsonify({
-                "Status": "Failed",
-                "Message": "Invalid username or password length",
+
+            response.update({
+                "status": "Failure",
+                "message": "Invalid username or password length",
                 "Data": {
-                    "Query": "REGISTER",
-                    "Result": []
+                    "Query" : "register",
+                    "Data" : []
                 },
-                "error": "Validation error"
-            }), 400
+                "error": "Invalid username or password length"
+            })
+            return jsonify(response), 400
 
         # Use psycopg2 cursor
         with conn.cursor() as cur:
@@ -128,42 +134,47 @@ def register():
 
             if existing_user:
                 field = 'Citizen ID' if existing_user[0] == citizen_id else 'Username'
-                return jsonify({
-                    "Status": "Failed",
-                    "Message": f'{field} already registered',
-                    "Data": {
-                        "Query": "REGISTER",
-                        "Result": []
-                    },
-                    "error": "Duplicate entry"
-                }), 400
 
+                response.update({
+                    "status": "Failure",
+                    "message": f'{field} already registered',
+                    "Data": {
+                        "Query" : "register",
+                        "Data" : []
+                    },
+                    "error": f'{field} already registered'
+                })
+                return jsonify(response), 400
+  
             cur.execute("INSERT INTO users (citizen_id, username, password, type) VALUES (%s, %s, %s, %s)",
                         (citizen_id, username, password, 'USER'))
             conn.commit()
 
-        return jsonify({
-            "Status": "Success",
-            "Message": "User registered successfully",
+
+        response.update({
+            "status": "Success",
+            "message": "User registered successfully",
             "Data": {
-                "Query": "REGISTER",
-                "Result": []
+                "Query" : "register",
+                "Data" : []
             },
             "error": None
-        }), 201
-        
+        })
+        return jsonify(response), 200
     except Exception as e:
         conn.rollback()
         print(f"Registration error: {str(e)}")
-        return jsonify({
-            "Status": "Failed",
-            "Message": "Internal server error",
+        response.update({
+            "status": "Failure",
+            "message": "Internal server error",
             "Data": {
-                "Query": "REGISTER",
-                "Result": []
+                "Query" : "register",
+                "Data" : []
             },
             "error": str(e)
-        }), 500
+        })
+        return jsonify(response), 500
+
 
 def get_citizen_profile(citizen_id):
     conn = psycopg2.connect(
@@ -228,6 +239,7 @@ def citizen_profile():
             },
             "error": str(e)
         }), 500
+
 
 def get_citizen_assets(owner_id):
     cursor = conn.cursor()
@@ -308,9 +320,15 @@ def citizen_tax_filings():
     user_id = current_user.id
     tax_filings = get_citizen_tax_filings(user_id)
     if tax_filings:
-        return jsonify(tax_filings)
-    else:
-        return jsonify({'error': 'No tax filings found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Tax filings retrieved successfully",
+            "Data": {
+                "Query": "get_tax_filings",
+                "Result": [tax_filings]
+            },
+            "error": None
+        }), 200
 
 def get_citizen_certificates(citizen_id):
     cursor = conn.cursor()
@@ -336,9 +354,15 @@ def citizen_certificates():
     user_id = current_user.id
     certificates = get_citizen_certificates(user_id)
     if certificates:
-        return jsonify(certificates)
-    else:
-        return jsonify({'error': 'No certificates found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Certificates retrieved successfully",
+            "Data": {
+                "Query": "get_certificates",
+                "Result": [certificates]
+            },
+            "error": None
+        }), 200
 
 def get_citizen_schemes(citizen_id):
     cursor = conn.cursor()
@@ -364,9 +388,15 @@ def citizen_enrolled_schemes():
     user_id = current_user.id
     schemes = get_citizen_schemes(user_id)
     if schemes:
-        return jsonify(schemes)
-    else:
-        return jsonify({'error': 'No scheme enrollments found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Scheme enrollments retrieved successfully",
+            "Data": {
+                "Query": "get_enrolled_schemes",
+                "Result": [schemes]
+            },
+            "error": None
+        }), 200
 
 @app.route('/query_table', methods=['POST'])
 @login_required
@@ -421,6 +451,7 @@ def query_table():
             for key, filter_data in filters.items():
                 if not key.isalnum():  # Basic SQL injection prevention
                     return jsonify({
+
                         "Status": "Failed",
                         "Message": "Invalid filter field",
                         "Data": {
@@ -455,6 +486,7 @@ def query_table():
                             },
                             "error": "BETWEEN operator requires a list of two values"
                         }), 400
+
                     where_conditions.append(f"{key} BETWEEN %s AND %s")
                     params.extend(value)
                 else:

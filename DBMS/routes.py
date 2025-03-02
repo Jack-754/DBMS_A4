@@ -5,14 +5,26 @@ from flask import render_template, url_for, flash, redirect, request, jsonify
 from flask import Flask, session, redirect, url_for, request
 from DBMS.models import User
 from flask_login import login_user, current_user, logout_user, login_required
-from flask_login import login_user, current_user, logout_user, login_required
 from run import conn
 import psycopg2
 from DBMS import app
 
 
+@app.route("/logout")
+def logout():
+    logout_user()
+    return jsonify({
+                "Status": "Success",
+                "Message": "Logout successful",
+                "Data": {
+                    "Query": "LOGOUT",
+                    "Result": []
+                },
+                "error": None
+            }), 200
+
 @app.route('/login', methods=['POST'])
-def post_example():
+def login():
     try:
         data = request.get_json()
         
@@ -71,13 +83,13 @@ def post_example():
 
 @app.route('/register', methods=['POST'])
 def register():
+    response = {}
     if current_user.is_authenticated:
-
         response.update({
             "status": "Failed",
             "message": "User already logged in",
             "Data": {
-                "Query" : "register",
+                "Query" : "REGISTER",
                 "Data" : []
             },
             "error": "User already logged in"
@@ -90,7 +102,7 @@ def register():
             response.update({"status": "Failed",
             "message": "Invalid JSON data",
             "Data": {
-                "Query" : "register",
+                "Query" : "REGISTER",
                 "Data" : []
             },
             "error": "Invalid JSON data"
@@ -103,7 +115,7 @@ def register():
                 "status": "Failure",
                 "message": "Missing required fields",
                 "Data": {
-                    "Query" : "register",
+                    "Query" : "REGISTER",
                     "Data" : []
                 },
                 "error": "Missing required fields"
@@ -119,7 +131,7 @@ def register():
                 "status": "Failure",
                 "message": "Invalid username or password length",
                 "Data": {
-                    "Query" : "register",
+                    "Query" : "REGISTER",
                     "Data" : []
                 },
                 "error": "Invalid username or password length"
@@ -139,7 +151,7 @@ def register():
                     "status": "Failure",
                     "message": f'{field} already registered',
                     "Data": {
-                        "Query" : "register",
+                        "Query" : "REGISTER",
                         "Data" : []
                     },
                     "error": f'{field} already registered'
@@ -155,7 +167,7 @@ def register():
             "status": "Success",
             "message": "User registered successfully",
             "Data": {
-                "Query" : "register",
+                "Query" : "REGISTER",
                 "Data" : []
             },
             "error": None
@@ -168,7 +180,7 @@ def register():
             "status": "Failure",
             "message": "Internal server error",
             "Data": {
-                "Query" : "register",
+                "Query" : "REGISTER",
                 "Data" : []
             },
             "error": str(e)
@@ -324,7 +336,7 @@ def citizen_tax_filings():
             "status": "Success",
             "Message": "Tax filings retrieved successfully",
             "Data": {
-                "Query": "get_tax_filings",
+                "Query": "SELECT",
                 "Result": [tax_filings]
             },
             "error": None
@@ -358,7 +370,7 @@ def citizen_certificates():
             "status": "Success",
             "Message": "Certificates retrieved successfully",
             "Data": {
-                "Query": "get_certificates",
+                "Query": "SELECT",
                 "Result": [certificates]
             },
             "error": None
@@ -392,7 +404,7 @@ def citizen_enrolled_schemes():
             "status": "Success",
             "Message": "Scheme enrollments retrieved successfully",
             "Data": {
-                "Query": "get_enrolled_schemes",
+                "Query": "SELECT",
                 "Result": [schemes]
             },
             "error": None
@@ -510,7 +522,7 @@ def query_table():
             "Status": "Success",
             "Message": "Query executed successfully",
             "Data": {
-                "Query": query,
+                "Query": "SELECT",
                 "Result": formatted_results
             },
             "error": None

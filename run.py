@@ -17,14 +17,12 @@ DB_PORT = os.getenv("DB_PORT")
 
 conn = connect_to_database(DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT)
 
-def init_db_connection():
-    global conn
-    if conn is None or conn.closed:
-        conn = psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASSWORD)
+if(conn is None):   
+    print("Connection to database failed")  
+    exit(1)
 
 if __name__ == '__main__':
-    init_db_connection()
-    execute_sql_file(conn, "./DBMS/initialzations.sql")
-    app.run(debug=True)
+    # execute_sql_file(conn, "./DBMS/kill_script.sql")
+    app.run(debug=True, host = "0.0.0.0",port=5001)
     
 

@@ -40,8 +40,7 @@ def execute_sql_file(connection, sql_file):
     Initializes the database by executing the SQL script in the provided file.
     """
     # Create a cursor object
-    global conn
-    cur = conn.cursor()
+    cur = connection.cursor()
 
     # Read the SQL file
     with open(sql_file, 'r') as file:
@@ -49,7 +48,7 @@ def execute_sql_file(connection, sql_file):
     # Execute SQL commands
     cur.execute(sql_script)
     # Commit changes
-    conn.commit()
+    connection.commit()
     print("SQL script executed successfully!")
 
 

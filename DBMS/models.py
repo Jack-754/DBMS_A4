@@ -29,7 +29,7 @@ class User(UserMixin):
         try:
             """Fetch user from PostgreSQL by ID."""
             cur = conn.cursor()
-            cur.execute("SELECT id, username, citizen_id, type FROM users WHERE id = %s", (userId,))
+            cur.execute("SELECT id, username, citizen_id, user_type FROM users WHERE id = %s", (userId,))
             user_data = cur.fetchone()
             cur.close()
             if user_data:

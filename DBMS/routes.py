@@ -5,9 +5,10 @@ from flask import render_template, url_for, flash, redirect, request, jsonify
 from flask import Flask, session, redirect, url_for, request
 from DBMS.models import User
 from flask_login import login_user, current_user, logout_user, login_required
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from run import conn
 import psycopg2
-from DBMS import app
+from DBMS import app, create_jwt, decode_jwt, token_given   
 
 
 @app.route("/logout")
@@ -26,6 +27,7 @@ def logout():
 @app.route('/login', methods=['POST'])
 def login():
     try:
+        global token_given
         data = request.get_json()
         print(f"Received data is: \n {data}")
         if not data or "Data" not in data or 'userId' not in data['Data'] or 'password' not in data['Data']:
@@ -41,6 +43,12 @@ def login():
         user = User.authenticate(data['Data']['userId'], data['Data']['password'])
         if user:
             login_user(user)
+            access_token = create_jwt(user.id)
+            if access_token is None:
+                print("Error creating token")
+            token_given = access_token
+
+            print("*****************",token_given)
             return jsonify({
                 "Status": "Success",
                 "Message": "Login successful",
@@ -52,7 +60,8 @@ def login():
                         "type": user.type
                     }]
                 },
-                "error": None
+                "error": None,
+                "token": access_token
             })
         else:
             return jsonify({
@@ -116,7 +125,7 @@ def register():
 
 
         citizen_id, username, password = data['Data']['citizen_id'], data['Data']['username'], data['Data']['password']
-
+        
         if len(username) < 3 or len(password) < 6:
             response.update({
                 "status": "Failure",
@@ -189,37 +198,43 @@ def register():
         return jsonify(response), 500
 
 def get_citizen_profile(citizen_id):
-    conn = psycopg2.connect(
-        dbname="localhost",
-        user="postgress",
-        password="postgress",
-        host="postgress",
-        port="5432"
-    )
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, dob, age, gender, phone, household_id, educational_id, village_id FROM citizens WHERE id=%s", (citizen_id,))
+    cursor.execute(f"SELECT id, name, dob, gender, phone, household_id, educational_qualification, village_id FROM citizens WHERE id={citizen_id};")
     profile = cursor.fetchone()
-    conn.close()
     if profile:
         return {
             'id': profile[0],
             'name': profile[1],
             'dob': profile[2],
-            'age': profile[3],
-            'gender': profile[4],
-            'phone': profile[5],
-            'household_id': profile[6],
-            'educational_id': profile[7],
-            'village_id': profile[8]
+            'gender': profile[3],
+            'phone': profile[4],
+            'household_id': profile[5],
+            'educational_id': profile[6],
+            'village_id': profile[7]
         }
     else:
         return None
 
-@app.route('/citizen/profile', methods=['POST'])
-@login_required
+@app.route('/profile', methods=['GET'])
 def citizen_profile():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        return jsonify({"error": "Missing Authorization header"}), 401
     try:
-        user_id = current_user.id
+        print(auth_header)
+        token = auth_header.split(" ")[1] 
+        print(token,type(token))
+        print(token_given,type(token_given))
+        if(token == token_given):
+            print("Token is valid")
+        decoded_token = decode_jwt(token)
+        print(decoded_token)
+        if "error" in decoded_token:
+            return jsonify(decoded_token), 401
+
+        user_id = decoded_token.get("sub")  
+
+        print(user_id)
         profile = get_citizen_profile(user_id)
         if profile:
             return jsonify({
@@ -255,22 +270,20 @@ def citizen_profile():
 
 def get_citizen_assets(owner_id):
     cursor = conn.cursor()
-    cursor.execute("SELECT , asset_id, a_type, date_of_registration FROM assets WHERE owner_id=%s", (owner_id,))
+    cursor.execute("SELECT asset_id, asset_type, date_of_registration FROM assets WHERE owner_id=%s", (owner_id,))
     assets = cursor.fetchall()
     cursor.close()
     
     if assets:
         return [{
             'id': asset[0],
-            'citizen_id': asset[1],
-            'asset_type': asset[2],
-            'quantity': asset[3],
-            'value': asset[4],
-            'purchase_date': asset[5]
+            'citizen_id': owner_id,
+            'asset_type': asset[1],
+            'date_of_registration': asset[2]
         } for asset in assets]
     return []
 
-@app.route('/citizen/assets', methods=['POST'])
+@app.route('/citizen/assets', methods=['GET'])
 @login_required
 def citizen_assets():
     try:
@@ -310,23 +323,21 @@ def citizen_assets():
 def get_citizen_tax_filings(citizen_id):
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT receipt_no, amount, filing_date, financial_year 
+        SELECT receipt_no, amount, filing_date
         FROM tax_filing 
         WHERE citizen_id=%s
         ORDER BY filing_date DESC""", (citizen_id,))
     filings = cursor.fetchall()
     cursor.close()
-    
     if filings:
         return [{
             'receipt_no': filing[0],
             'amount': filing[1],
             'filing_date': filing[2].strftime('%Y-%m-%d'),
-            'financial_year': filing[3]
         } for filing in filings]
     return []
 
-@app.route('/citizen/tax', methods=['POST'])
+@app.route('/citizen/tax', methods=['GET'])
 @login_required
 def citizen_tax_filings():
     user_id = current_user.id
@@ -345,7 +356,7 @@ def citizen_tax_filings():
 def get_citizen_certificates(citizen_id):
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT certificate_no, type, issue_date
+        SELECT certificate_no, cert_type, issue_date
         FROM certificates 
         WHERE citizen_issued=%s
         ORDER BY issue_date DESC""", (citizen_id,))
@@ -360,7 +371,7 @@ def get_citizen_certificates(citizen_id):
         } for cert in certificates]
     return []
 
-@app.route('/citizen/certificates', methods=['POST'])
+@app.route('/citizen/certificates', methods=['GET'])
 @login_required
 def citizen_certificates():
     user_id = current_user.id
@@ -394,7 +405,7 @@ def get_citizen_schemes(citizen_id):
         } for enrollment in enrollments]
     return []
 
-@app.route('/citizen/enrolled_schemes', methods=['POST'])
+@app.route('/citizen/enrolled_schemes', methods=['GET'])
 @login_required
 def citizen_enrolled_schemes():
     user_id = current_user.id
@@ -410,12 +421,11 @@ def citizen_enrolled_schemes():
             "error": None
         }), 200
 
-@app.route('/query_table', methods=['POST'])
+@app.route('/query_table', methods=['GET'])
 @login_required
 def query_table():
     try:
         data = request.get_json()
-        
         if not data or 'Query' not in data or 'Data' not in data:
             return jsonify({
                 "Status": "Failed",
@@ -461,19 +471,7 @@ def query_table():
             }
 
             for key, filter_data in filters.items():
-                if not key.isalnum():  # Basic SQL injection prevention
-                    return jsonify({
-
-                        "Status": "Failed",
-                        "Message": "Invalid filter field",
-                        "Data": {
-                            "Query": "SELECT",
-                            "Result": []
-                        },
-                        "error": "Invalid filter field"
-                    }), 200
-
-                operator = filter_data.get('operator', 'eq')  # Default to equals
+                operator = filter_data['operator']  
                 value = filter_data.get('value')
 
                 if operator not in valid_operators:
@@ -509,6 +507,7 @@ def query_table():
 
         # Execute query
         with conn.cursor() as cur:
+            query += ";"
             cur.execute(query, params)
             columns = [desc[0] for desc in cur.description]
             results = cur.fetchall()
@@ -525,7 +524,8 @@ def query_table():
                 "Query": "SELECT",
                 "Result": formatted_results
             },
-            "error": None
+            "error": None,
+            
         }), 200
 
     except Exception as e:
@@ -617,22 +617,21 @@ def insert_record():
     try:
         data = request.get_json()
 
-        # Validate required fields
-        if not all(key in data for key in ['table_name', 'values']):
+        if not all(key in data["Data"] for key in ['table_name', 'values']):
             return jsonify({
                 'status': 'error',
                 'message': 'Missing required fields',
                 'status_code': 200
             }), 200
 
-        table_name = data['table_name']
-        values = data['values']
+        table_name = data["Data"]['table_name']
+        values = data["Data"]['values']
 
         # Construct INSERT query
         columns = ', '.join(values.keys())
         placeholders = ', '.join(['%s'] * len(values))
-        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
+        print(query)
         cursor = conn.cursor()
         cursor.execute(query, list(values.values()))
         conn.commit()
@@ -654,49 +653,159 @@ def insert_record():
         if 'cursor' in locals():
             cursor.close()
 
+# @app.route('/delete', methods=['DELETE'])
+# def delete_record():
+#     # try:
+#         data = request.get_json()
 
-@app.route('/delete', methods=['POST'])
-def delete_record():
+#         # Validate required fields
+#         if not all(key in data["Data"] for key in ['table_name', 'filters']):
+#             return jsonify({
+#                 'status': 'error',
+#                 'message': 'Missing required fields',
+#                 'status_code': 200
+#             }), 200
+
+#         table_name = data['Data']['table_name']
+#         filters = data['Data']['filters']
+
+#         # Construct DELETE query
+#         where_clause = ' AND '.join([f"{key} = %s" for key in filters.keys()])
+#         query = f"DELETE FROM {table_name} WHERE {where_clause}"
+
+#         cursor = conn.cursor()
+#         cursor.execute(query)
+#         affected_rows = cursor.rowcount
+#         conn.commit()
+
+#         return jsonify({
+#             'status': 'success',
+#             'message': f'Deleted {affected_rows} rows successfully',
+#             'status_code': 200
+#         }), 200
+
+    # except Exception as e:
+    #     conn.rollback()
+    #     return jsonify({
+    #         'status': 'error',
+    #         'message': str(e),
+    #         'status_code': 500
+    #     }), 500
+    # finally:
+    #     if 'cursor' in locals():
+    #         cursor.close()
+
+@app.route('/delete', methods=['DELETE'])
+@login_required
+def delete():
     try:
         data = request.get_json()
-
-        # Validate required fields
-        if not all(key in data for key in ['table_name', 'filters']):
+        if not data or 'Query' not in data or 'Data' not in data:
             return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields',
-                'status_code': 200
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": []
+                },
+                "error": "Invalid request format"
             }), 200
 
-        table_name = data['table_name']
-        filters = data['filters']
+        # Extract table name and filters from request
+        table_name = data['Data'].get('table_name')
+        filters = data['Data'].get('filters', {})
 
-        # Construct DELETE query
-        where_clause = ' AND '.join([f"{key} = %s" for key in filters.keys()])
-        query = f"DELETE FROM {table_name} WHERE {where_clause}"
+        # Basic SQL injection prevention for table name
+        if not table_name or not table_name.isalnum():
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid table name",
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": []
+                },
+                "error": "Invalid table name"
+            }), 200
 
-        cursor = conn.cursor()
-        cursor.execute(query, list(filters.values()))
-        affected_rows = cursor.rowcount
-        conn.commit()
+        # Construct the SQL query
+        query = f"DELETE FROM {table_name}"
+        params = []
 
+        # Add WHERE clause if filters exist
+        if filters:
+            where_conditions = []
+            valid_operators = {
+                'eq': '=',
+                'gt': '>',
+                'lt': '<',
+                'gte': '>=',
+                'lte': '<=',
+                'ne': '!=',
+                'between': 'BETWEEN'
+            }
+
+            for key, filter_data in filters.items():
+                operator = filter_data['operator']  
+                value = filter_data.get('value')
+
+                if operator not in valid_operators:
+                    return jsonify({
+                        "Status": "Failed",
+                        "Message": f'Invalid operator: {operator}',
+                        "Data": {
+                            "Query": "DELETE",
+                            "Result": []
+                        },
+                        "error": f"Invalid operator: {operator}"
+                    }), 200
+
+                if operator == 'between':
+                    if not isinstance(value, list) or len(value) != 2:
+                        return jsonify({
+                            "Status": "Failed",
+                            "Message": "BETWEEN operator requires a list of two values",
+                            "Data": {
+                                "Query": "DELETE",
+                                "Result": []
+                            },
+                            "error": "BETWEEN operator requires a list of two values"
+                        }), 200
+
+                    where_conditions.append(f"{key} BETWEEN %s AND %s")
+                    params.extend(value)
+                else:
+                    where_conditions.append(f"{key} {valid_operators[operator]} %s")
+                    params.append(value)
+
+            query += " WHERE " + " AND ".join(where_conditions)
+
+        # Execute query
+        with conn.cursor() as cur:
+            query += ";"
+            cur.execute(query, params)
+
+            conn.commit()
         return jsonify({
-            'status': 'success',
-            'message': f'Deleted {affected_rows} rows successfully',
-            'status_code': 200
+            "Status": "Success",
+            "Message": "DELETE executed successfully",
+            "Data": {
+                "Query": "DELETE",
+                "Result": []
+            },
+            "error": None
         }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'status_code': 500
+            "Status": "Failed",
+            "Message": "Error executing query",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
         }), 500
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-
 
 
 

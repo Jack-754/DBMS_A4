@@ -2,43 +2,52 @@
 import './navbar.css';
 import DButton from '../../atoms/DButton';
 import { Link,NavLink } from 'react-router-dom';
-import { callAPI } from '../../services/ApiHelper'
+// import { callAPI } from '../../services/ApiHelper'
 
-const icon_map = {
-    1:"/icons/dashboard.svg",
-    2:"/icons/expenses.svg",
-    3:"/icons/admin.svg",
-    4:"/icons/admin-white.svg",
-    5:"/icons/expenses-white.svg",
-    6:"/icons/dashboard-white.svg",
-}
-const icon_map_dark = {
-    6:"/icons/dashboard.svg",
-    5:"/icons/expenses.svg",
-    4:"/icons/admin.svg",
-    3:"/icons/admin-white.svg",
-    2:"/icons/expenses-white.svg",
-    1:"/icons/dashboard-white.svg",
-}
+// const icon_map = {
+//     1:"/icons/dashboard.svg",
+//     2:"/icons/expenses.svg",
+//     3:"/icons/admin.svg",
+//     4:"/icons/admin-white.svg",
+//     5:"/icons/expenses-white.svg",
+//     6:"/icons/dashboard-white.svg",
+// }
+// const icon_map_dark = {
+//     6:"/icons/dashboard.svg",
+//     5:"/icons/expenses.svg",
+//     4:"/icons/admin.svg",
+//     3:"/icons/admin-white.svg",
+//     2:"/icons/expenses-white.svg",
+//     1:"/icons/dashboard-white.svg",
+// }
 
 const signOut = async () => {
-    const response = await callAPI('/signout', 'POST');
-    localStorage.removeItem('name');
-    localStorage.removeItem('access-token');    
+    const response = await axios.post(import.meta.env.VITE_APP_URI + '/signout', {
+        Query: "",
+        Add: "Signout",
+        Data: {}
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+        // withCredentials: true
+      });
+    localStorage.removeItem('user_type');
     if(!response.error) window.location.href = '/';
 }
 
 function Navbar({ tabs }) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isDarkMode, setIsDarkMode] = useState(false);
-    const [iconMap, setIconMap] = useState(icon_map);
+    // const [iconMap, setIconMap] = useState(icon_map);
     useEffect(() => {
         if (isDarkMode) {
           document.body.setAttribute("data-theme", "dark");
-          setIconMap(icon_map_dark);
+        //   setIconMap(icon_map_dark);
         } else {
           document.body.removeAttribute("data-theme");
-          setIconMap(icon_map);
+        //   setIconMap(icon_map);
         }
       }, [isDarkMode]);
 
@@ -46,7 +55,7 @@ function Navbar({ tabs }) {
         <nav className="main-menu">
             <div style={{height:"100px", display:"flex", justifyContent:"center", alignItems:"center"}}>
                 <h1>Trackify</h1>
-                <img className="logo" src={iconMap[1]} alt="logo" />
+                {/* <img className="logo" src={iconMap[1]} alt="logo" /> */}
             </div>
             <ul>
                 {tabs.map((tab, index) => (
@@ -58,7 +67,7 @@ function Navbar({ tabs }) {
                         <b></b>
                         <b></b>
                         <Link to={tab.link} className='link'>
-                            <img src={`${activeIndex === index ? iconMap[index+1] : iconMap[6-index]}`} className={`nav-icon `}></img>
+                            {/* <img src={`${activeIndex === index ? iconMap[index+1] : iconMap[6-index]}`} className={`nav-icon `}></img> */}
                             <span className="nav-text">{tab.label}</span>
                         </Link>
                     </li>

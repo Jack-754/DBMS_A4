@@ -57,7 +57,6 @@
 
 import React from "react";
 import { useState } from "react";
-import { FaChevronDown } from "react-icons/fa";
 import "./DDropdown.css";
 
 function DDropdown({ name, data, func }) {
@@ -73,7 +72,6 @@ function DDropdown({ name, data, func }) {
         <div className="dropdown-container">
             <div className="custom-dropdown" onClick={toggleDropdown}>
                 <span>{selected.charAt(0).toUpperCase() + selected.slice(1)}</span>
-                <FaChevronDown className={`dropdown-icon ${isDropdownOpen ? "rotate" : ""}`} />
             </div>
 
             {isDropdownOpen && (

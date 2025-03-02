@@ -4,8 +4,8 @@ import './auth.css';
 import Loader from '../../molecules/Loader';
 
 const Register = ({ className, onLoginClick ,onSuccess}) => {
-  const [first_name, setFirst_name] = useState('');
-  const [last_name, setLast_name] = useState('');
+  const [name, setName] = useState('');
+  const [citizen_id, setCitizen_id] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm_password, setconfirm_password] = useState('');
@@ -21,15 +21,20 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
     setErrors('');
     setIsLoading(true);
     // Validate Name
-    if (!first_name.trim()) {
-      setErrors('First Name is required');
+    if (!name.trim()) {
+      setErrors('Name is required');
       return;
       // validationErrors.first_name = "First Name is required";
     }
-    if (!last_name.trim()) {
-      setErrors('Last Name is required');
+    if (!citizen_id.trim()) {
+      setErrors('Citizen ID is required');
       return;
       // validationErrors.lst_name = "Last Name is required";
+    }
+
+    if (!/^\d+$/.test(citizen_id)) {
+      setErrors('Citizen ID must contain only numbers');
+      return;
     }
 
     // Validate Email
@@ -38,12 +43,12 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
       return;
       // validationErrors.email = "Email is required";
     } 
-    else if (!isValidEmail(email)) {
-      setErrors('Invalid email format');
-      return;
+    // else if (!isValidEmail(email)) {
+    //   setErrors('Invalid email format');
+    //   return;
 
-      // validationErrors.email = "Invalid email format";
-    }
+    //   // validationErrors.email = "Invalid email format";
+    // }
 
     // Validate Password
     if (!password.trim()) {
@@ -69,7 +74,26 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
       // validationErrors.confirmPassword = "Passwords do not match";
     }
 
-    const response = await callAPI('/signup', 'POST',{first_name:first_name, last_name:last_name, email:email, password:password, confirm_password:confirm_password,role_name:'user'});
+    const response = await axios.post(import.meta.env.VITE_APP_URI + '/login', {
+      Query: "",
+      Add: "Register",
+      Data: {
+        citizen_id: citizen_id,
+        userId: email,
+        password: password,
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.data) {
+      // Store the received data in localStorage
+      localStorage.setItem('user_type', response.data.userType); // Make sure backend sends userType
+      navigate('/app');
+      setErrors('');
+    }
     console.log("response",response);
     // If all validations pass, proceed with submission
     setIsLoading(false);
@@ -78,8 +102,8 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
       setErrors('');
       setEmail('');
       setPassword('');
-      setFirst_name('');
-      setLast_name('');
+      setName('');
+      setCitizen_id('');
       setconfirm_password('');
     }
     else{
@@ -92,34 +116,33 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
   return (
     <form className={`signUp ${className}`} onSubmit={handleSubmit}>
       <h3>Create Your Account</h3>
-
       {/* Fisrt Name Input */}
       <input
         className="w100"
         type="text"
         name="name"
-        placeholder="First Name"
+        placeholder="Name"
         autoComplete="off"
-        value={first_name}
-        onChange={(e) => setFirst_name(e.target.value)}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
       />
 
       {/* Last Name Input */}
       <input
         className="w100"
-        type="text"
-        name="name"
-        placeholder="Last Name"
+        type="number"
+        name="citizen_id"
+        placeholder="Citizen ID"
         autoComplete="off"
-        value={last_name}
-        onChange={(e) => setLast_name(e.target.value)}
+        value={citizen_id}
+        onChange={(e) => setCitizen_id(e.target.value)}
       />
       
 
       {/* Email Input */}
       <input
         className="w100"
-        type="email"
+        type="text"
         name="email"
         placeholder="Email"
         autoComplete="off"

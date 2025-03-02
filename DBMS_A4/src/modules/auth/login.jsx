@@ -4,6 +4,7 @@ import './auth.css';
 // import { callAPI } from '../../services/ApiHelper'
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../molecules/Loader';
+import axios from 'axios';
 
 const Login = ({ className, onBackClick }) => {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ const Login = ({ className, onBackClick }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // let validationErrors = {};
+
     setErrors('');
     setIsLoading(true);
     // Check if email is valid
@@ -25,11 +26,7 @@ const Login = ({ className, onBackClick }) => {
       // validationErrors.email = "Email is required";
       setErrors('Email is required');
       return;
-    } else if (!isValidEmail(email)) {
-      setErrors('Invalid email format');
-      return;
     }
-
     // Check if password meets length requirement
     if (!password.trim()) {
       setErrors('Password is required');
@@ -40,12 +37,28 @@ const Login = ({ className, onBackClick }) => {
       return;
     }
 
-    const response = await callAPI('/signin', 'POST', { email:email, password:password });
+    const response = await axios.post(import.meta.env.VITE_APP_URI + '/login', {
+      Query: "",
+      Add: "Login",
+      Data: {
+        userId: email,
+        password: password
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      // withCredentials: true
+    });
     console.log("response",response);
-    if(!response.error){
-      localStorage.setItem('name', response.data.firstName); // Example: Store token
-      localStorage.setItem('access-token', response.data["access-token"]);
-      navigate('/app');
+    if(response.data.Status === "Success"){
+      // localStorage.setItem('name', response.data.firstName); // Example: Store token
+      localStorage.setItem('user_id', response.data.Data.Result[0].userId);
+      localStorage.setItem('user_type', response.data.Data.Result[0].type);
+
+      console.log("response.data.userType", localStorage.getItem('user_type'));
+      navigate('/schemes');
       // window.location.href = '/app';
       setErrors('');
     }
@@ -82,7 +95,7 @@ const Login = ({ className, onBackClick }) => {
 
       {/* Email Input */}
       <input 
-        type="email" 
+        type="text" 
         placeholder="Email" 
         autoComplete="off" 
         value={email} 

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import ExpenseCard from '../expenses/ExpenseCard';
-import MyLineChart from '../graph/Graph';
-import MyPieChart from '../graph/Chart';
+// import ExpenseCard from '../expenses/ExpenseCard';
+// import MyLineChart from '../graph/Graph';
+// import MyPieChart from '../graph/Chart';
 // import { callAPI } from '../../services/ApiHelper';
 import DDropdown from '../../atoms/DDropdown';
 import DButton from '../../atoms/DButton';
 import Loader from '../../molecules/Loader';
-import MyPieChart2 from '../graph/Chart2';
+// import MyPieChart2 from '../graph/Chart2';
 
 function Dashboard() {
     const [totalExpense, setTotalExpense] = useState(0);

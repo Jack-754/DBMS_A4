@@ -1,49 +1,57 @@
 import os
 import secrets
-from datetime import datetime,time
-from flask import render_template, url_for, flash, redirect, request, jsonify
-from flask import Flask, session, redirect, url_for, request
-from DBMS.models import User
-from flask_login import login_user, current_user, logout_user, login_required
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from run import conn
+from datetime import datetime, time, timedelta
+
 import psycopg2
-from DBMS import app
+from flask import (Flask, flash, jsonify, redirect, render_template, request,
+                   session, url_for)
+from flask_cors import CORS
+from flask_jwt_extended import (JWTManager, create_access_token,
+                                get_jwt_identity, jwt_required)
+from flask_login import current_user, login_required, login_user, logout_user
+
+from backend import app
+from backend.models import User
+from run import conn
+
+# Add these configurations after creating the app
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Credentials"]
+    }
+})
+
+app.config['JWT_SECRET_KEY'] = 'your-secret-key-here'  # Change this to a secure secret key
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+jwt = JWTManager(app)
 
 
-@app.route("/logout")
-def logout():
-    logout_user()
-    return jsonify({
-                "Status": "Success",
-                "Message": "Logout successful",
-                "Data": {
-                    "Query": "LOGOUT",
-                    "Result": []
-                },
-                "error": None
-            })
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['POST', 'OPTIONS'])
 def login():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+
     try:
         data = request.get_json()
-        print(f"Received data is: \n {data}")
-        if not data or "Data" not in data or 'userId' not in data['Data'] or 'password' not in data['Data']:
+        if not data or "Data" not in data or 'username' not in data['Data'] or 'password' not in data['Data']:
             return jsonify({
                 "Status": "Failed",
-                "Message": "Missing required fields: userId and password",
+                "Message": "Missing required fields: username and password",
                 "Data": {
                     "Query": "LOGIN",
                     "Result": []
                 },
                 "error": "Missing required fields"
-            })
-        user = User.authenticate(data['Data']['userId'], data['Data']['password'])
+            }), 400
+
+        # Modify the User.authenticate method according to your needs
+        user = User.authenticate(data['Data']['username'], data['Data']['password'])
         if user:
-            login_user(user)
             access_token = create_access_token(identity=user.id)
-            print(access_token)
             return jsonify({
                 "Status": "Success",
                 "Message": "Login successful",
@@ -56,8 +64,8 @@ def login():
                     }]
                 },
                 "error": None,
-                "token": access_token
-            })
+                "access_token": access_token
+            }), 200
         else:
             return jsonify({
                 "Status": "Failed",
@@ -67,7 +75,7 @@ def login():
                     "Result": []
                 },
                 "error": "Authentication failed"
-            })
+            }), 401
     except Exception as e:
         return jsonify({
             "Status": "Failed",
@@ -77,7 +85,7 @@ def login():
                 "Result": []
             },
             "error": str(e)
-        })
+        }), 500
 
 @app.route('/register', methods=['POST'])
 def register():

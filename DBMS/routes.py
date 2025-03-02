@@ -106,7 +106,7 @@ def get_citizen_profile(citizen_id):
         port="5432"
     )
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, dob, age, gender, phone, caste, household_id, educational_id, village_id FROM citizens WHERE id=%s", (citizen_id,))
+    cursor.execute("SELECT id, name, dob, age, gender, phone, household_id, educational_id, village_id FROM citizens WHERE id=%s", (citizen_id,))
     profile = cursor.fetchone()
     conn.close()
     if profile:
@@ -117,10 +117,9 @@ def get_citizen_profile(citizen_id):
             'age': profile[3],
             'gender': profile[4],
             'phone': profile[5],
-            'caste': profile[6],
-            'household_id': profile[7],
-            'educational_id': profile[8],
-            'village_id': profile[9]
+            'household_id': profile[6],
+            'educational_id': profile[7],
+            'village_id': profile[8]
         }
     else:
         return None

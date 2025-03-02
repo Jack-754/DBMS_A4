@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS citizens (
    age INT GENERATED ALWAYS AS (DATE_PART('year', AGE(dob))) STORED,
    gender CHAR(1) NOT NULL CHECK (gender IN ('M', 'F', 'O')),
    phone VARCHAR(10) NOT NULL CHECK (phone ~ '^[0-9]{10}$'),
-   caste VARCHAR(20) NOT NULL,
    household_id INT NOT NULL,
    educational_qualification TEXT NOT NULL CHECK (
        educational_qualification IN ('Illiterate', 'Primary', 'Secondary', '10th', '12th', 'Graduate', 'Post-Graduate')
@@ -294,7 +293,6 @@ CREATE TABLE IF NOT EXISTS scheme_enrollment (
 -- --    age INT GENERATED ALWAYS AS (DATE_PART('year', AGE(dob))) STORED,
 -- --    gender CHAR(1) NOT NULL CHECK (gender IN ('M', 'F', 'O')),
 -- --    phone VARCHAR(10) NOT NULL CHECK (phone ~ '^[0-9]{10}$'), -- Ensures valid 10-digit phone number
--- --    caste VARCHAR(20) NOT NULL,
 -- --    household_id INT NOT NULL,
 -- --    educational_qualification TEXT NOT NULL CHECK (
 -- --        educational_qualification IN ('Illiterate', 'Primary', 'Secondary', '10th', '12th', 'Graduate', 'Post-Graduate')

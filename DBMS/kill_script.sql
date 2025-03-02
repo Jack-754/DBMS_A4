@@ -1,9 +1,13 @@
-DO $$ 
-DECLARE 
-    r RECORD;
-BEGIN 
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') 
-    LOOP 
-        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE;';
-    END LOOP;
-END $$;
+DROP TABLE IF EXISTS vaccination;
+DROP TABLE IF EXISTS expenditure;
+DROP TABLE IF EXISTS scheme_enrollment;
+DROP TABLE IF EXISTS schemes;
+DROP TABLE IF EXISTS panchayat_employees;
+DROP TABLE IF EXISTS assets;
+DROP TABLE IF EXISTS certificates;
+DROP TABLE IF EXISTS income_declarations;
+DROP TABLE IF EXISTS tax_filing;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS citizens;
+DROP TABLE IF EXISTS households;
+DROP TABLE IF EXISTS village;

@@ -1,7 +1,9 @@
 from flask import Flask, jsonify
 from flask_login import LoginManager
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 # Initializes Flask configuration from keys in config.py.
 app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
 

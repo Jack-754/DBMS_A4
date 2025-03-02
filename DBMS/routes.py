@@ -22,15 +22,14 @@ def logout():
                     "Result": []
                 },
                 "error": None
-            }), 200
+            })
 
 @app.route('/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
-        
-        # Validate required fields
-        if not data or 'Data' not in data or 'userId' not in data['Data'] or 'password' not in data['Data']:
+        print(f"Received data is: \n {data}")
+        if not data or "Data" not in data or 'userId' not in data['Data'] or 'password' not in data['Data']:
             return jsonify({
                 "Status": "Failed",
                 "Message": "Missing required fields: userId and password",
@@ -39,15 +38,10 @@ def login():
                     "Result": []
                 },
                 "error": "Missing required fields"
-            }), 400
-        
-        # Authenticate user
+            })
         user = User.authenticate(data['Data']['userId'], data['Data']['password'])
-        
         if user:
-            # Login the user with Flask-Login
             login_user(user)
-            
             return jsonify({
                 "Status": "Success",
                 "Message": "Login successful",
@@ -60,7 +54,7 @@ def login():
                     }]
                 },
                 "error": None
-            }), 200
+            })
         else:
             return jsonify({
                 "Status": "Failed",
@@ -70,7 +64,7 @@ def login():
                     "Result": []
                 },
                 "error": "Authentication failed"
-            }), 401
+            })
     except Exception as e:
         return jsonify({
             "Status": "Failed",
@@ -80,7 +74,7 @@ def login():
                 "Result": []
             },
             "error": str(e)
-        }), 500
+        })
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -95,8 +89,7 @@ def register():
             },
             "error": "User already logged in"
             })
-        return jsonify(response),400
-
+        return jsonify(response)
     try:
         data = request.get_json()
         if not data:
@@ -108,10 +101,9 @@ def register():
             },
             "error": "Invalid JSON data"
             })
-            return jsonify(response), 400
-
+            return jsonify(response)
         required_fields = ['citizen_id', 'username', 'password']
-        if not all(field in data and data[field] for field in required_fields):
+        if not all(field in data['Data'] and data['Data'][field] for field in required_fields):
             response.update({
                 "status": "Failure",
                 "message": "Missing required fields",
@@ -121,13 +113,12 @@ def register():
                 },
                 "error": "Missing required fields"
             })
-            return jsonify(response), 400
+            return jsonify(response)
 
 
         citizen_id, username, password = data['Data']['citizen_id'], data['Data']['username'], data['Data']['password']
 
         if len(username) < 3 or len(password) < 6:
-
             response.update({
                 "status": "Failure",
                 "message": "Invalid username or password length",
@@ -137,17 +128,15 @@ def register():
                 },
                 "error": "Invalid username or password length"
             })
-            return jsonify(response), 400
+            return jsonify(response)
 
         # Use psycopg2 cursor
         with conn.cursor() as cur:
             cur.execute("SELECT citizen_id, username FROM users WHERE citizen_id = %s OR username = %s",
                         (citizen_id, username))
             existing_user = cur.fetchone()
-
             if existing_user:
                 field = 'Citizen ID' if existing_user[0] == citizen_id else 'Username'
-
                 response.update({
                     "status": "Failure",
                     "message": f'{field} already registered',
@@ -157,12 +146,24 @@ def register():
                     },
                     "error": f'{field} already registered'
                 })
-                return jsonify(response), 400
-  
-            cur.execute("INSERT INTO users (citizen_id, username, password, type) VALUES (%s, %s, %s, %s)",
-                        (citizen_id, username, password, 'USER'))
+                return jsonify(response)
+            
+            cur.execute("SELECT id FROM citizens WHERE id = %s ",(citizen_id,))
+            valid = cur.fetchone()
+            if not valid:
+                response.update({
+                    "status": "Failure",
+                    "message": f'No such citizen found',
+                    "Data": {
+                        "Query" : "REGISTER",
+                        "Data" : []
+                    },
+                    "error": f'No such citizen found'
+                })
+                return jsonify(response)
+            cur.execute("INSERT INTO users (citizen_id, username, pswd, user_type) VALUES (%s, %s, %s, %s)",
+                        (citizen_id, username, password, 'CITIZEN'))
             conn.commit()
-
 
         response.update({
             "status": "Success",
@@ -187,7 +188,6 @@ def register():
             "error": str(e)
         })
         return jsonify(response), 500
-
 
 def get_citizen_profile(citizen_id):
     conn = psycopg2.connect(
@@ -426,7 +426,7 @@ def query_table():
                     "Result": []
                 },
                 "error": "Invalid request format"
-            }), 400
+            }), 200
 
         # Extract table name and filters from request
         table_name = data['Data'].get('table_name')
@@ -442,7 +442,7 @@ def query_table():
                     "Result": []
                 },
                 "error": "Invalid table name"
-            }), 400
+            }), 200
 
         # Construct the SQL query
         query = f"SELECT * FROM {table_name}"
@@ -472,7 +472,7 @@ def query_table():
                             "Result": []
                         },
                         "error": "Invalid filter field"
-                    }), 400
+                    }), 200
 
                 operator = filter_data.get('operator', 'eq')  # Default to equals
                 value = filter_data.get('value')
@@ -486,7 +486,7 @@ def query_table():
                             "Result": []
                         },
                         "error": f"Invalid operator: {operator}"
-                    }), 400
+                    }), 200
 
                 if operator == 'between':
                     if not isinstance(value, list) or len(value) != 2:
@@ -498,7 +498,7 @@ def query_table():
                                 "Result": []
                             },
                             "error": "BETWEEN operator requires a list of two values"
-                        }), 400
+                        }), 200
 
                     where_conditions.append(f"{key} BETWEEN %s AND %s")
                     params.extend(value)
@@ -556,7 +556,7 @@ def update_record():
                     "Result": []
                 },
                 "error": "Invalid request format"
-            }), 400
+            }), 200
 
         request_data = data['Data']
         if not all(key in request_data for key in ['table_name', 'filters', 'new_values']):
@@ -568,7 +568,7 @@ def update_record():
                     "Result": []
                 },
                 "error": "Missing required fields"
-            }), 400
+            }), 200
 
         table_name = request_data['table_name']
         filters = request_data['filters']
@@ -623,8 +623,8 @@ def insert_record():
             return jsonify({
                 'status': 'error',
                 'message': 'Missing required fields',
-                'status_code': 400
-            }), 400
+                'status_code': 200
+            }), 200
 
         table_name = data['table_name']
         values = data['values']
@@ -666,8 +666,8 @@ def delete_record():
             return jsonify({
                 'status': 'error',
                 'message': 'Missing required fields',
-                'status_code': 400
-            }), 400
+                'status_code': 200
+            }), 200
 
         table_name = data['table_name']
         filters = data['filters']

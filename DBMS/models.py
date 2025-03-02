@@ -9,6 +9,10 @@ import psycopg2
 def load_user(user_id):
     try:
         user = User.get_user_by_id(int(user_id)) 
+        if(user is None):
+            print("Error loading user")
+        else:
+            print("User loaded successfully: ", user.username)
         return user if user else None
     except ValueError:
         return None  
@@ -28,23 +32,29 @@ class User(UserMixin):
             cur.execute("SELECT id, username, citizen_id, type FROM users WHERE id = %s", (userId,))
             user_data = cur.fetchone()
             cur.close()
-
             if user_data:
                 return User(user_data[0], user_data[1], user_data[2], user_data[3])
             return None
-        except:
+        except Exception as e:
+            print(f"Error loading user: {e}")
+            conn.rollback()  # Add this to roll back failed transactions
             return None
 
     @staticmethod
     def authenticate(userId, password):
         """Check if userId and password match a record in the database."""
-        try :
+        try:
             cur = conn.cursor()
-            cur.execute("SELECT id, username, citizen_id, type, password FROM users WHERE id = %s", (userId,))
+            cur.execute(f"SELECT id, username, citizen_id, user_type, pswd FROM users WHERE username = %s;", (userId,))
             user_data = cur.fetchone()
+            
+            print("Trying to print data", user_data)
+            
             cur.close()
             if user_data and user_data[4] == password:  
                 return User(user_data[0], user_data[1], user_data[2], user_data[3])
             return None
         except Exception as e:
+            print(f"Error authenticating user: {e}")
+            conn.rollback()  # Add this to roll back failed transactions
             return None

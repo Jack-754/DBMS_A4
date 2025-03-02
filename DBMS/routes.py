@@ -246,7 +246,228 @@ def citizen_enrolled_schemes():
     else:
         return jsonify({'error': 'No scheme enrollments found for user'}), 404
 
+@app.route('/query_table', methods=['POST'])
+@login_required
+def query_table():
+    try:
+        data = request.get_json()
+
+        # Extract table name and filters from request
+        table_name = data.get('table_name')
+        filters = data.get('filters', {})
+
+        # Basic SQL injection prevention for table name
+        if not table_name or not table_name.isalnum():
+            return jsonify({
+                'status': 'error',
+                'status_code': 400,
+                'message': 'Invalid table name',
+                'data': None
+            }), 400
+
+        # Construct the SQL query
+        query = f"SELECT * FROM {table_name}"
+        params = []
+
+        # Add WHERE clause if filters exist
+        if filters:
+            where_conditions = []
+            valid_operators = {
+                'eq': '=',
+                'gt': '>',
+                'lt': '<',
+                'gte': '>=',
+                'lte': '<=',
+                'ne': '!=',
+                'between': 'BETWEEN'
+            }
+
+            for key, filter_data in filters.items():
+                if not key.isalnum():  # Basic SQL injection prevention
+                    return jsonify({
+                        'status': 'error',
+                        'status_code': 400,
+                        'message': 'Invalid filter field',
+                        'data': None
+                    }), 400
+
+                operator = filter_data.get('operator', 'eq')  # Default to equals
+                value = filter_data.get('value')
+
+                if operator not in valid_operators:
+                    return jsonify({
+                        'status': 'error',
+                        'status_code': 400,
+                        'message': f'Invalid operator: {operator}',
+                        'data': None
+                    }), 400
+
+                if operator == 'between':
+                    if not isinstance(value, list) or len(value) != 2:
+                        return jsonify({
+                            'status': 'error',
+                            'status_code': 400,
+                            'message': 'BETWEEN operator requires a list of two values',
+                            'data': None
+                        }), 400
+                    where_conditions.append(f"{key} BETWEEN %s AND %s")
+                    params.extend(value)
+                else:
+                    where_conditions.append(f"{key} {valid_operators[operator]} %s")
+                    params.append(value)
+
+            query += " WHERE " + " AND ".join(where_conditions)
+
+        # Execute query
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            results = cur.fetchall()
+
+        return jsonify({
+            'status': 'success',
+            'status_code': 200,
+            'message': 'Query executed successfully',
+            'data': results
+        })
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            'status': 'error',
+            'status_code': 500,
+            'message': str(e),
+            'data': None
+        }), 500
+    
+@app.route('/update', methods=['POST'])
+def update_record():
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        if not all(key in data for key in ['table_name', 'filters', 'new_values']):
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing required fields',
+                'status_code': 400
+            }), 400
+
+        table_name = data['table_name']
+        filters = data['filters']
+        new_values = data['new_values']
+
+        # Construct UPDATE query
+        set_clause = ', '.join([f"{key} = %s" for key in new_values.keys()])
+        where_clause = ' AND '.join([f"{key} = %s" for key in filters.keys()])
+        query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause}"
+
+        # Prepare parameters
+        params = list(new_values.values()) + list(filters.values())
+
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        affected_rows = cursor.rowcount
+        conn.commit()
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Updated {affected_rows} rows successfully',
+            'status_code': 200
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'status_code': 500
+        }), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
 
 
+@app.route('/insert', methods=['POST'])
+def insert_record():
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        if not all(key in data for key in ['table_name', 'values']):
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing required fields',
+                'status_code': 400
+            }), 400
+
+        table_name = data['table_name']
+        values = data['values']
+
+        # Construct INSERT query
+        columns = ', '.join(values.keys())
+        placeholders = ', '.join(['%s'] * len(values))
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+
+        cursor = conn.cursor()
+        cursor.execute(query, list(values.values()))
+        conn.commit()
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Record inserted successfully',
+            'status_code': 200
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'status_code': 500
+        }), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
 
 
+@app.route('/delete', methods=['POST'])
+def delete_record():
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        if not all(key in data for key in ['table_name', 'filters']):
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing required fields',
+                'status_code': 400
+            }), 400
+
+        table_name = data['table_name']
+        filters = data['filters']
+
+        # Construct DELETE query
+        where_clause = ' AND '.join([f"{key} = %s" for key in filters.keys()])
+        query = f"DELETE FROM {table_name} WHERE {where_clause}"
+
+        cursor = conn.cursor()
+        cursor.execute(query, list(filters.values()))
+        affected_rows = cursor.rowcount
+        conn.commit()
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Deleted {affected_rows} rows successfully',
+            'status_code': 200
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'status_code': 500
+        }), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()

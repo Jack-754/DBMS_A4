@@ -1,7 +1,7 @@
 # Run the Flask application.
 
 from DBMS import app
-from DBMS.functionals.connectdb import connect_to_database
+from DBMS.functionals.connectdb import connect_to_database,execute_sql_file
 import psycopg2
 from dotenv import load_dotenv
 import os
@@ -24,6 +24,7 @@ def init_db_connection():
 
 if __name__ == '__main__':
     init_db_connection()
+    execute_sql_file(conn, "./DBMS/initialzations.sql")
     app.run(debug=True)
     
 

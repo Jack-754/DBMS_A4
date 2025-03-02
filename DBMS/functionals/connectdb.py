@@ -34,6 +34,31 @@ def execute_query(connection, query):
     except Exception as e:
         print(f"Error executing query: {e}")
         return None
+    
+def execute_sql_file(connection, sql_file):
+    """
+    Initializes the database by executing the SQL script in the provided file.
+    """
+    # Create a cursor object
+    global conn
+    cur = conn.cursor()
+
+    # Read the SQL file
+    with open(sql_file, 'r') as file:
+        sql_script = file.read()
+    # Execute SQL commands
+    cur.execute(sql_script)
+    # Commit changes
+    conn.commit()
+    print("SQL script executed successfully!")
+
+
+def close_connection(connection):
+    """
+    Closes the connection to the database.
+    """
+    connection.close()
+    print("Connection closed!")
 
 if __name__ == "__main__":
     # Database connection details

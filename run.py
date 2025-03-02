@@ -1,14 +1,21 @@
-# Run the Flask application.
+# Run the Flask application....
 
 from DBMS import app
+from DBMS.functionals.connectdb import connect_to_database,execute_sql_file
 import psycopg2
+from dotenv import load_dotenv
+import os
 
-DB_HOST = "1111.1111.1111.1111"
-DB_NAME = "your_database"
-DB_USER = "user"
-DB_PASSWORD = "password"
 
-conn = None
+load_dotenv()
+
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_PORT = os.getenv("DB_PORT")
+
+conn = connect_to_database(DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT)
 
 def init_db_connection():
     global conn
@@ -17,6 +24,7 @@ def init_db_connection():
 
 if __name__ == '__main__':
     init_db_connection()
+    execute_sql_file(conn, "./DBMS/initialzations.sql")
     app.run(debug=True)
     
 

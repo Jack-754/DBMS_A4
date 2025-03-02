@@ -143,9 +143,9 @@ def get_citizen_profile(citizen_id):
             'age': profile[3],
             'gender': profile[4],
             'phone': profile[5],
-            'household_id': profile[7],
-            'educational_id': profile[8],
-            'village_id': profile[9]
+            'household_id': profile[6],
+            'educational_id': profile[7],
+            'village_id': profile[8]
         }
     else:
         return None

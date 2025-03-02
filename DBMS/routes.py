@@ -3,35 +3,13 @@ import secrets
 from datetime import datetime,time
 from flask import render_template, url_for, flash, redirect, request, jsonify
 from flask import Flask, session, redirect, url_for, request
+from DBMS.models import User
+from flask_login import login_user, current_user, logout_user, login_required
 from run import conn
 import psycopg2
 from DBMS import app
 
 
-# Renders the home page. 
-# If the user is authenticated and an admin, redirects to the admin page.
-# If the user is authenticated but has no location set, flashes a warning to set location and redirects to account page.
-# Otherwise, fetches all restaurants or only nearby restaurants based on auth status,  
-# fetches all transactions, and renders the home template.
-@app.route("/")
-@app.route("/home")
-def home():
-    user=current_user
-    restaurants=None
-    if(user.is_authenticated and user.id==1):
-        return redirect(url_for('admin'))
-    if(user.is_authenticated and (user.latitude is None or user.longitude is None)):
-        if(isinstance(user, User)):
-            flash('Please enter your location first in Account settings for getting list of restaurants','warning')
-        else:
-            flash('Please enter your location first in Restaurant settings for getting list of orders','warning')
-        return redirect(url_for('account'))
-    elif(user.is_authenticated):
-        restaurants = Restaurant.query.filter(Restaurant.latitude.isnot(None),Restaurant.longitude.isnot(None)).all()
-    else:
-        restaurants = Restaurant.query.all()
-    transactions = Transaction.query.all()
-    return render_template('home.html', restaurants=restaurants,title='Home',calculate_distance=calculate_distance,transactions=transactions)
 
 
 @app.route("/admin")
@@ -42,24 +20,6 @@ def admin():
     else:
         return render_template('admin.html', title='Admin')
 
-# Renders a page showing all restaurants.
-
-# If the user is not an admin, redirects to the home page.  
-# Otherwise, fetches all restaurants from the database and renders the allRestaurants template.
-
-@app.route("/allRestaurants")
-@login_required
-def allRestaurants():
-    if(current_user.is_authenticated and current_user.id!=1):
-        return redirect(url_for('home'))
-    else:
-        restaurants=Restaurant.query.all()
-        return render_template('allRestaurants.html', restaurants=restaurants,title='All Restaurants')
-
-# Renders a page showing all users except the admin.
-
-# If the current user is not admin, redirects to the home page.
-# Otherwise, fetches all users except the admin from the database and renders the allUsers template.
 
 @app.route("/allUsers")
 @login_required
@@ -72,10 +32,6 @@ def allUsers():
             users = users[1:]
         return render_template('allUsers.html', users=users,title='All Users')
 
-# Renders a page showing all NGO users.
-
-# If the current user is not admin, redirects to the home page.
-# Otherwise, fetches all NGO users from the database and renders the allNgos template.
 
 @app.route("/allNgos")
 @login_required
@@ -102,3 +58,67 @@ def post_example():
     
     data = request.json  # Get JSON payload from the request
     return jsonify({"message": "Data received!", "data": data})
+
+@app.route('/register', methods=['POST'])
+def register():
+    response = {'status': None, 'message': None}
+
+    if current_user.is_authenticated:
+        response.update({'status': 400, 'message': 'User already logged in'})
+        return jsonify(response)
+
+    try:
+        data = request.get_json()
+        if not data:
+            response.update({'status': 400, 'message': 'Invalid JSON data'})
+            return jsonify(response)
+
+        required_fields = ['citizen_id', 'username', 'password']
+        if not all(field in data and data[field] for field in required_fields):
+            response.update({'status': 400, 'message': 'Missing required fields'})
+            return jsonify(response)
+
+        citizen_id, username, password = data['citizen_id'], data['username'], data['password']
+
+        if len(username) < 3 or len(password) < 6:
+            response.update({'status': 400, 'message': 'Invalid username or password length'})
+            return jsonify(response)
+
+        # Use psycopg2 cursor
+        with conn.cursor() as cur:
+            cur.execute("SELECT citizen_id, username FROM users WHERE citizen_id = %s OR username = %s",
+                        (citizen_id, username))
+            existing_user = cur.fetchone()
+
+            if existing_user:
+                field = 'Citizen ID' if existing_user[0] == citizen_id else 'Username'
+                response.update({'status': 400, 'message': f'{field} already registered'})
+                return jsonify(response)
+
+            cur.execute("INSERT INTO users (citizen_id, username, password, type) VALUES (%s, %s, %s, %s)",
+                        (citizen_id, username, password, 'USER'))
+            conn.commit()
+
+        response.update({'status': 201, 'message': 'User registered successfully'})
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Registration error: {str(e)}")
+        response.update({'status': 500, 'message': 'Internal server error'})
+
+    return jsonify(response)
+
+# @app.route("/register", methods=['GET', 'POST'])
+# def register():
+#     if(current_user.is_authenticated):
+#         return redirect(url_for('home'))
+#     form = UserRegistrationForm()
+#     if form.validate_on_submit():
+#         hashedPassword=bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+#         user = User(id= identity(), username=form.username.data, email=form.email.data, password=hashedPassword, address=form.address.data, ngo=form.ngo.data)
+#         db.session.add(user)
+#         db.session.commit()
+#         flash('Your account has been created! You can now login', 'success')
+#         return redirect(url_for('login'))
+#     return render_template('userRegister.html', title='Register', form=form)
+# # Logs in a user.

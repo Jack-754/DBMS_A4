@@ -11,9 +11,12 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 
 CORS(app, resources={
     r"/*": {
-        "origins": "*",
+        "origins": ["http://localhost:5173"],  # Specific frontend origin
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Credentials"]
+        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Credentials"],
+        "supports_credentials": True,
+        "expose_headers": ["Authorization"],
+        "allow_credentials": True
     }
 })
 

@@ -53,26 +53,56 @@ def register():
     response = {'status': None, 'message': None}
 
     if current_user.is_authenticated:
-        response.update({'status': 400, 'message': 'User already logged in'})
-        return jsonify(response)
+        response.update({
+            "status": "Failed",
+            "message": "User already logged in",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": "User already logged in"
+            })
+        return jsonify(response), 101
 
     try:
         data = request.get_json()
         if not data:
-            response.update({'status': 400, 'message': 'Invalid JSON data'})
-            return jsonify(response)
+            response.update({"status": "Failed",
+            "message": "Invalid JSON data",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": "Invalid JSON data"
+            })
+            return jsonify(response), 101
 
         required_fields = ['citizen_id', 'username', 'password']
         if not all(field in data and data[field] for field in required_fields):
-            response.update({'status': 400, 'message': 'Missing required fields'})
-            return jsonify(response)
+            response.update({
+                "status": "Failure",
+                "message": "Missing required fields",
+                "Data": {
+                    "Query" : "register",
+                    "Data" : []
+                },
+                "error": "Missing required fields"
+            })
+            return jsonify(response), 101
 
         citizen_id, username, password = data['citizen_id'], data['username'], data['password']
 
         if len(username) < 3 or len(password) < 6:
-            response.update({'status': 400, 'message': 'Invalid username or password length'})
-            return jsonify(response)
-
+            response.update({
+                "status": "Failure",
+                "message": "Invalid username or password length",
+                "Data": {
+                    "Query" : "register",
+                    "Data" : []
+                },
+                "error": "Invalid username or password length"
+            })
+            return jsonify(response), 101
         # Use psycopg2 cursor
         with conn.cursor() as cur:
             cur.execute("SELECT citizen_id, username FROM users WHERE citizen_id = %s OR username = %s",
@@ -81,21 +111,43 @@ def register():
 
             if existing_user:
                 field = 'Citizen ID' if existing_user[0] == citizen_id else 'Username'
-                response.update({'status': 400, 'message': f'{field} already registered'})
-                return jsonify(response)
-
+                response.update({
+                    "status": "Failure",
+                    "message": f'{field} already registered',
+                    "Data": {
+                        "Query" : "register",
+                        "Data" : []
+                    },
+                    "error": f'{field} already registered'
+                })
+                return jsonify(response), 101
             cur.execute("INSERT INTO users (citizen_id, username, password, type) VALUES (%s, %s, %s, %s)",
                         (citizen_id, username, password, 'USER'))
             conn.commit()
 
-        response.update({'status': 201, 'message': 'User registered successfully'})
-        
+        response.update({
+            "status": "Success",
+            "message": "User registered successfully",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": None
+        })
+        return jsonify(response), 200
     except Exception as e:
         conn.rollback()
         print(f"Registration error: {str(e)}")
-        response.update({'status': 500, 'message': 'Internal server error'})
-
-    return jsonify(response)
+        response.update({
+            "status": "Failure",
+            "message": "Internal server error",
+            "Data": {
+                "Query" : "register",
+                "Data" : []
+            },
+            "error": "Internal server error"
+        })
+        return jsonify(response), 101
 
 def get_citizen_profile(citizen_id):
     conn = psycopg2.connect(
@@ -130,9 +182,14 @@ def citizen_profile():
     user_id = current_user.id
     profile = get_citizen_profile(user_id)
     if profile:
-        return jsonify(profile)
-    else:
-        return jsonify({'error': 'Citizen not found'}), 404
+        return jsonify({"status": "Sucesss",
+        "Message": "profile retrived succesfully",
+        "Data": {
+            "Query" : "get_profile"
+            "Result" : [profile]
+        },
+        "error": None
+        }), 200
 
 def get_citizen_assets(owner_id):
     cursor = conn.cursor()
@@ -157,9 +214,15 @@ def citizen_assets():
     user_id = current_user.id
     assets = get_citizen_assets(user_id)
     if assets:
-        return jsonify(assets)
-    else:
-        return jsonify({'error': 'No assets with user found'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Assets retrieved successfully",
+            "Data": {
+                "Query": "get_assets",
+                "Result": [assets]
+            },
+            "error": None
+        }), 200
 
 def get_citizen_tax_filings(citizen_id):
     cursor = conn.cursor()
@@ -186,9 +249,15 @@ def citizen_tax_filings():
     user_id = current_user.id
     tax_filings = get_citizen_tax_filings(user_id)
     if tax_filings:
-        return jsonify(tax_filings)
-    else:
-        return jsonify({'error': 'No tax filings found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Tax filings retrieved successfully",
+            "Data": {
+                "Query": "get_tax_filings",
+                "Result": [tax_filings]
+            },
+            "error": None
+        }), 200
 
 def get_citizen_certificates(citizen_id):
     cursor = conn.cursor()
@@ -214,9 +283,15 @@ def citizen_certificates():
     user_id = current_user.id
     certificates = get_citizen_certificates(user_id)
     if certificates:
-        return jsonify(certificates)
-    else:
-        return jsonify({'error': 'No certificates found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Certificates retrieved successfully",
+            "Data": {
+                "Query": "get_certificates",
+                "Result": [certificates]
+            },
+            "error": None
+        }), 200
 
 def get_citizen_schemes(citizen_id):
     cursor = conn.cursor()
@@ -242,9 +317,15 @@ def citizen_enrolled_schemes():
     user_id = current_user.id
     schemes = get_citizen_schemes(user_id)
     if schemes:
-        return jsonify(schemes)
-    else:
-        return jsonify({'error': 'No scheme enrollments found for user'}), 404
+        return jsonify({
+            "status": "Success",
+            "Message": "Scheme enrollments retrieved successfully",
+            "Data": {
+                "Query": "get_enrolled_schemes",
+                "Result": [schemes]
+            },
+            "error": None
+        }), 200
 
 @app.route('/query_table', methods=['POST'])
 @login_required
@@ -259,11 +340,14 @@ def query_table():
         # Basic SQL injection prevention for table name
         if not table_name or not table_name.isalnum():
             return jsonify({
-                'status': 'error',
-                'status_code': 400,
+                "status": "Failure",
                 'message': 'Invalid table name',
-                'data': None
-            }), 400
+                'data': {
+                    "Query" : "query_table",
+                    "Result" : []
+                },
+                "error": "Invalid table name"
+            }), 101
 
         # Construct the SQL query
         query = f"SELECT * FROM {table_name}"
@@ -285,31 +369,40 @@ def query_table():
             for key, filter_data in filters.items():
                 if not key.isalnum():  # Basic SQL injection prevention
                     return jsonify({
-                        'status': 'error',
-                        'status_code': 400,
+                        "status": "Failure",
                         'message': 'Invalid filter field',
-                        'data': None
-                    }), 400
+                        'data': {
+                            "Query" : "query_table",
+                            "Result" : []
+                        },
+                        "error": "Invalid filter field"
+                    }), 101
 
                 operator = filter_data.get('operator', 'eq')  # Default to equals
                 value = filter_data.get('value')
 
                 if operator not in valid_operators:
                     return jsonify({
-                        'status': 'error',
-                        'status_code': 400,
+                        "status": "Failure",
                         'message': f'Invalid operator: {operator}',
-                        'data': None
-                    }), 400
+                        'data': {
+                            "Query" : "query_table",
+                            "Result" : []
+                        },
+                        "error": f'Invalid operator: {operator}'
+                    }), 101
 
                 if operator == 'between':
                     if not isinstance(value, list) or len(value) != 2:
                         return jsonify({
-                            'status': 'error',
-                            'status_code': 400,
+                            "status": "Failure",
                             'message': 'BETWEEN operator requires a list of two values',
-                            'data': None
-                        }), 400
+                            'data': {
+                                "Query" : "query_table",
+                                "Result" : []
+                            },
+                            "error": "BETWEEN operator requires a list of two values"
+                        }), 101
                     where_conditions.append(f"{key} BETWEEN %s AND %s")
                     params.extend(value)
                 else:
@@ -324,20 +417,26 @@ def query_table():
             results = cur.fetchall()
 
         return jsonify({
-            'status': 'success',
-            'status_code': 200,
-            'message': 'Query executed successfully',
-            'data': results
-        })
+            "status": "Success",
+            "Message": "Query executed successfully",
+            "Data": {
+                "Query": "query_table",
+                "Result": [results]
+            },
+            "error": None
+        }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'status_code': 500,
-            'message': str(e),
-            'data': None
-        }), 500
+            "status": "Failure",
+            "message": str(e),
+            "data": {
+                "Query" : "query_table",
+                "Result" : []
+            },
+            "error": str(e)
+        }), 101
     
 @app.route('/update', methods=['POST'])
 def update_record():

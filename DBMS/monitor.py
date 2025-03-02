@@ -40,7 +40,12 @@ def query_table():
         
         # Basic SQL injection prevention
         if not table_name.isalnum():
-            return jsonify({'error': 'Invalid table name'}), 400
+            return jsonify({
+                'status': 'error',
+                'status_code': 400,
+                'message': 'Invalid table name',
+                'data': None
+            }), 400
         
         # Construct the SQL query
         query = f"SELECT * FROM {table_name}"
@@ -57,22 +62,45 @@ def query_table():
                 'lt': '<',
                 'gte': '>=',
                 'lte': '<=',
-                'ne': '!='
+                'ne': '!=',
+                'between': 'BETWEEN'
             }
             
             for key, filter_data in filters.items():
                 if not key.isalnum():  # Basic SQL injection prevention
-                    return jsonify({'error': 'Invalid filter field'}), 400
+                    return jsonify({
+                        'status': 'error',
+                        'status_code': 400,
+                        'message': 'Invalid filter field',
+                        'data': None
+                    }), 400
                 
                 # Extract operator and value from filter_data
                 operator = filter_data.get('operator', 'eq')  # default to equals
                 value = filter_data.get('value')
                 
                 if operator not in valid_operators:
-                    return jsonify({'error': f'Invalid operator: {operator}'}), 400
+                    return jsonify({
+                        'status': 'error',
+                        'status_code': 400,
+                        'message': f'Invalid operator: {operator}',
+                        'data': None
+                    }), 400
                 
-                where_conditions.append(f"{key} {valid_operators[operator]} %s")
-                params.append(value)
+                # Special handling for BETWEEN operator
+                if operator == 'between':
+                    if not isinstance(value, list) or len(value) != 2:
+                        return jsonify({
+                            'status': 'error',
+                            'status_code': 400,
+                            'message': 'BETWEEN operator requires a list of two values',   #### we must revieve a list from the front end 
+                            'data': None
+                        }), 400
+                    where_conditions.append(f"{key} BETWEEN %s AND %s")
+                    params.extend(value)  # Add both values to params
+                else:
+                    where_conditions.append(f"{key} {valid_operators[operator]} %s")
+                    params.append(value)
             
             query += " WHERE " + " AND ".join(where_conditions)
         else:
@@ -81,7 +109,12 @@ def query_table():
         # Execute query
         conn = get_db_connection()
         if not conn:
-            return jsonify({'error': 'Database connection failed'}), 500
+            return jsonify({
+                'status': 'error',
+                'status_code': 500,
+                'message': 'Database connection failed',
+                'data': None
+            }), 500
         
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params)
@@ -89,11 +122,21 @@ def query_table():
             
         conn.close()
         
-        # Convert results to JSON
-        return jsonify(results)
+        # Return successful response with data
+        return jsonify({
+            'status': 'success',
+            'status_code': 200,
+            'message': 'Query executed successfully',
+            'data': results
+        })
     
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'status': 'error',
+            'status_code': 500,
+            'message': str(e),
+            'data': None
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

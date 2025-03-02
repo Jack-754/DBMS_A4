@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS citizens (
     id SERIAL PRIMARY KEY NOT NULL,
     name VARCHAR(255) NOT NULL,
     dob DATE NOT NULL,
-    age INT GENERATED ALWAYS AS (DATE_PART('year', AGE(dob))) STORED,
     gender CHAR(1) NOT NULL CHECK (gender IN ('M', 'F', 'O')),
     phone VARCHAR(10) NOT NULL CHECK (phone ~ '^[0-9]{10}$'),
     household_id INT,
@@ -41,10 +40,10 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY NOT NULL,
     username VARCHAR(255) NOT NULL UNIQUE,
     pswd VARCHAR(255) NOT NULL, -- Increased length for hashed passwords
-    user_type TEXT NOT NULL CHECK (user_type IN ('USER', 'GOVERNMENT_MONITOR', 'PANCHAYAT_EMPLOYEES', 'SYSTEM_ADMINISTRATOR')),
+    user_type TEXT NOT NULL CHECK (user_type IN ('CITIZEN', 'GOVERNMENT_MONITOR', 'PANCHAYAT_EMPLOYEES', 'SYSTEM_ADMINISTRATOR')),
     citizen_id INT,
     CONSTRAINT citizen_id_required CHECK (
-        (user_type IN ('USER', 'PANCHAYAT_EMPLOYEES') AND citizen_id IS NOT NULL) OR
+        (user_type IN ('CITIZEN', 'PANCHAYAT_EMPLOYEES', 'GOVERNMENT_MONITOR') AND citizen_id IS NOT NULL) OR
         (user_type IN ('SYSTEM_ADMINISTRATOR') AND citizen_id IS NULL)
     ),
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
@@ -56,16 +55,27 @@ CREATE TABLE IF NOT EXISTS tax_filing (
     amount INT NOT NULL CHECK (amount > 0),
     citizen_id INT NOT NULL,
     filing_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    financial_year VARCHAR(9) GENERATED ALWAYS AS (
-        CASE 
-            WHEN EXTRACT(MONTH FROM filing_date) >= 4 
-            THEN CONCAT(EXTRACT(YEAR FROM filing_date), '-', EXTRACT(YEAR FROM filing_date) + 1)
-            ELSE CONCAT(EXTRACT(YEAR FROM filing_date) - 1, '-', EXTRACT(YEAR FROM filing_date))
-        END
-    ) STORED,
+    financial_year VARCHAR(9),
     CONSTRAINT unique_tax_filing_per_year UNIQUE (citizen_id, financial_year),
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
 );
+
+-- Create trigger to calculate financial_year automatically
+CREATE OR REPLACE FUNCTION calculate_financial_year()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXTRACT(MONTH FROM NEW.filing_date) >= 4 THEN
+        NEW.financial_year := CONCAT(EXTRACT(YEAR FROM NEW.filing_date), '-', EXTRACT(YEAR FROM NEW.filing_date) + 1);
+    ELSE
+        NEW.financial_year := CONCAT(EXTRACT(YEAR FROM NEW.filing_date) - 1, '-', EXTRACT(YEAR FROM NEW.filing_date));
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_tax_filing_financial_year
+BEFORE INSERT OR UPDATE ON tax_filing
+FOR EACH ROW EXECUTE FUNCTION calculate_financial_year();
 
 -- INCOME DECLARATIONS TABLE (Depends on CITIZENS)
 CREATE TABLE IF NOT EXISTS income_declarations (
@@ -74,16 +84,15 @@ CREATE TABLE IF NOT EXISTS income_declarations (
     citizen_id INT NOT NULL,
     filing_date DATE NOT NULL DEFAULT CURRENT_DATE,
     source VARCHAR(50) NOT NULL,
-    financial_year VARCHAR(9) GENERATED ALWAYS AS (
-        CASE 
-            WHEN EXTRACT(MONTH FROM filing_date) >= 4 
-            THEN CONCAT(EXTRACT(YEAR FROM filing_date), '-', EXTRACT(YEAR FROM filing_date) + 1)
-            ELSE CONCAT(EXTRACT(YEAR FROM filing_date) - 1, '-', EXTRACT(YEAR FROM filing_date))
-        END
-    ) STORED,
+    financial_year VARCHAR(9),
     CONSTRAINT unique_income_declaration_per_year UNIQUE (citizen_id, source, financial_year),
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
 );
+
+-- Create trigger to calculate financial_year automatically
+CREATE TRIGGER update_income_declaration_financial_year
+BEFORE INSERT OR UPDATE ON income_declarations
+FOR EACH ROW EXECUTE FUNCTION calculate_financial_year();
 
 -- CERTIFICATES TABLE (Depends on CITIZENS)
 CREATE TABLE IF NOT EXISTS certificates (
@@ -127,11 +136,24 @@ CREATE TABLE IF NOT EXISTS scheme_enrollment (
     citizen_id INT NOT NULL,
     scheme_id INT NOT NULL,
     enrollment_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    enrollment_year INT GENERATED ALWAYS AS (EXTRACT (year FROM enrollment_date)) STORED,
+    enrollment_year INT,
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE,
     FOREIGN KEY (scheme_id) REFERENCES schemes(id) ON DELETE CASCADE,
     CONSTRAINT unique_citizen_scheme_per_year UNIQUE (citizen_id, scheme_id, enrollment_year)
 );
+
+-- Create trigger to calculate enrollment_year automatically
+CREATE OR REPLACE FUNCTION calculate_enrollment_year()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.enrollment_year := EXTRACT(YEAR FROM NEW.enrollment_date);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_enrollment_year
+BEFORE INSERT OR UPDATE ON scheme_enrollment
+FOR EACH ROW EXECUTE FUNCTION calculate_enrollment_year();
 
 CREATE TABLE IF NOT EXISTS expenditure (
     id SERIAL PRIMARY KEY,

@@ -1,22 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell
-} from 'recharts';
 import './DataDashboard.css';
 
 const DataDashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedVillage, setSelectedVillage] = useState('');
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   useEffect(() => {
     fetchStats();
-  }, [selectedVillage]);
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -46,7 +39,6 @@ const DataDashboard = () => {
         setError(response.data.Message);
         alert(response.data.Message || 'Failed to fetch statistics');
       }
-      console.log(response);
     } catch (err) {
       setError(err.message);
       alert(err.response?.data?.Message || err.message || 'Error fetching statistics');
@@ -66,114 +58,132 @@ const DataDashboard = () => {
       {/* Demographics Section */}
       <section className="dashboard-section">
         <h2>Demographics</h2>
-        <div className="chart-container">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={[
-                  { name: 'Male', value: stats.demographics[0].male_population },
-                  { name: 'Female', value: stats.demographics[0].female_population },
-                  { name: 'Other', value: stats.demographics[0].other_population }
-                ]}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {stats.demographics[0] && COLORS.map((color, index) => (
-                  <Cell key={`cell-${index}`} fill={color} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+        {stats.demographics[0] && (
+          <div className="info-grid">
+            <div className="info-item">
+              <label>Village Name:</label>
+              <span>{stats.demographics[0].village_name}</span>
+            </div>
+            <div className="info-item">
+              <label>Total Population:</label>
+              <span>{stats.demographics[0].total_population}</span>
+            </div>
+            <div className="info-item">
+              <label>Male Population:</label>
+              <span>{stats.demographics[0].male_population}</span>
+            </div>
+            <div className="info-item">
+              <label>Female Population:</label>
+              <span>{stats.demographics[0].female_population}</span>
+            </div>
+            <div className="info-item">
+              <label>Other Population:</label>
+              <span>{stats.demographics[0].other_population}</span>
+            </div>
+            <div className="info-item">
+              <label>Total Households:</label>
+              <span>{stats.demographics[0].total_households}</span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Education Section */}
       <section className="dashboard-section">
         <h2>Education Distribution</h2>
-        <div className="chart-container">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stats.education}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="educational_qualification" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#8884d8" />
-              <Bar dataKey="percentage" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Qualification</th>
+                <th>Count</th>
+                <th>Percentage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.education.map((edu, index) => (
+                <tr key={index}>
+                  <td>{edu.educational_qualification}</td>
+                  <td>{edu.count}</td>
+                  <td>{edu.percentage}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
       {/* Age Distribution */}
       <section className="dashboard-section">
         <h2>Age Distribution</h2>
-        <div className="chart-container">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={[stats.age[0]]}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="village_name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="under_18" fill="#8884d8" />
-              <Bar dataKey="age_18_30" fill="#82ca9d" />
-              <Bar dataKey="age_31_50" fill="#ffc658" />
-              <Bar dataKey="above_50" fill="#ff8042" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {stats.age[0] && (
+          <div className="info-grid">
+            <div className="info-item">
+              <label>Under 18:</label>
+              <span>{stats.age[0].under_18}</span>
+            </div>
+            <div className="info-item">
+              <label>18-30 years:</label>
+              <span>{stats.age[0].age_18_30}</span>
+            </div>
+            <div className="info-item">
+              <label>31-50 years:</label>
+              <span>{stats.age[0].age_31_50}</span>
+            </div>
+            <div className="info-item">
+              <label>Above 50:</label>
+              <span>{stats.age[0].above_50}</span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Schemes Section */}
       <section className="dashboard-section">
         <h2>Scheme Enrollment</h2>
-        <div className="chart-container">
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stats.schemes}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="scheme_name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="enrolled_citizens" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Scheme Name</th>
+                <th>Enrolled Citizens</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.schemes.map((scheme, index) => (
+                <tr key={index}>
+                  <td>{scheme.scheme_name}</td>
+                  <td>{scheme.enrolled_citizens}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
       {/* Financial Statistics */}
       <section className="dashboard-section">
         <h2>Financial Overview</h2>
-        <div className="stats-grid">
-          {stats.financial[0] && (
-            <>
-              <div className="stat-card">
-                <h3>Tax Payers</h3>
-                <p>{stats.financial[0].tax_payers}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Average Tax Amount</h3>
-                <p>₹{stats.financial[0].avg_tax_amount}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Income Declarants</h3>
-                <p>{stats.financial[0].income_declarants}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Average Declared Income</h3>
-                <p>₹{stats.financial[0].avg_declared_income}</p>
-              </div>
-            </>
-          )}
-        </div>
+        {stats.financial[0] && (
+          <div className="info-grid">
+            <div className="info-item">
+              <label>Tax Payers:</label>
+              <span>{stats.financial[0].tax_payers}</span>
+            </div>
+            <div className="info-item">
+              <label>Average Tax Amount:</label>
+              <span>₹{stats.financial[0].avg_tax_amount}</span>
+            </div>
+            <div className="info-item">
+              <label>Income Declarants:</label>
+              <span>{stats.financial[0].income_declarants}</span>
+            </div>
+            <div className="info-item">
+              <label>Average Declared Income:</label>
+              <span>₹{stats.financial[0].avg_declared_income}</span>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

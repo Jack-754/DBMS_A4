@@ -520,6 +520,22 @@ def query_table():
 @jwt_required()
 def update_record():
     try:
+        # Check if user is a citizen
+        user_id = get_jwt_identity()
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_type FROM users WHERE id = %s", (user_id,))
+            user_type = cur.fetchone()[0]
+            if user_type == 'CITIZEN':
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": "Unauthorized: Citizens cannot perform update operations",
+                    "Data": {
+                        "Query": "UPDATE",
+                        "Result": []
+                    },
+                    "error": "Permission denied"
+                }), 403
+        
         data = request.get_json()
 
         # Validate required fields
@@ -593,6 +609,22 @@ def update_record():
 @jwt_required()
 def insert_record():
     try:
+        # Check if user is a citizen
+        user_id = get_jwt_identity()
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_type FROM users WHERE id = %s", (user_id,))
+            user_type = cur.fetchone()[0]
+            if user_type == 'CITIZEN':
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": "Unauthorized: Citizens cannot perform insert operations",
+                    "Data": {
+                        "Query": "INSERT",
+                        "Result": []
+                    },
+                    "error": "Permission denied"
+                }), 403
+                
         data = request.get_json()
 
         if not all(key in data["Data"] for key in ['table_name', 'values']):
@@ -636,6 +668,22 @@ def insert_record():
 @jwt_required()
 def delete():
     try:
+        # Check if user is a citizen
+        user_id = get_jwt_identity()
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_type FROM users WHERE id = %s", (user_id,))
+            user_type = cur.fetchone()[0]
+            if user_type == 'CITIZEN':
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": "Unauthorized: Citizens cannot perform delete operations",
+                    "Data": {
+                        "Query": "DELETE",
+                        "Result": []
+                    },
+                    "error": "Permission denied"
+                }), 403
+                
         data = request.get_json()
         
         if not data or 'Query' not in data or 'Data' not in data:
@@ -907,7 +955,27 @@ def get_stats():
 def universal():
     cursor = None
     try:
+        # Check if user is a citizen trying to modify data
+        user_id = get_jwt_identity()
         data = request.get_json()
+        query_type = data['Query']
+        
+        # Check permissions for modification operations
+        if query_type in ["UPDATE", "DELETE", "INSERT"]:
+            with conn.cursor() as cur:
+                cur.execute("SELECT user_type FROM users WHERE id = %s", (user_id,))
+                user_type = cur.fetchone()[0]
+                if user_type == 'CITIZEN':
+                    return jsonify({
+                        "Status": "Failed",
+                        "Message": f"Unauthorized: Citizens cannot perform {query_type} operations",
+                        "Data": {
+                            "Query": query_type,
+                            "Result": []
+                        },
+                        "error": "Permission denied"
+                    }), 403
+        
         if not data or 'Query' not in data or 'Data' not in data:
             return jsonify({
                 "Status": "Failed",
@@ -919,7 +987,6 @@ def universal():
                 "error": "Invalid request format"
             }), 400
 
-        query_type = data['Query']  # SELECT, UPDATE, DELETE, INSERT
         request_data = data['Data']
 
         # Validate basic required fields

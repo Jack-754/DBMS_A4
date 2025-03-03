@@ -1,21 +1,11 @@
-from DBMS import login_manager, app
-from flask_login import UserMixin
 from datetime import datetime
-from run import conn  # Ensure 'conn' is properly initialized in 'run'
+
 import psycopg2
+from flask_login import UserMixin
+from run import conn  # Ensure 'conn' is properly initialized in 'run'
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    try:
-        user = User.get_user_by_id(int(user_id)) 
-        if(user is None):
-            print("Error loading user")
-        else:
-            print("User loaded successfully: ", user.username)
-        return user if user else None
-    except ValueError:
-        return None  
+
 
 class User(UserMixin):
     def __init__(self, userId, username, citizen_id, type):
@@ -29,7 +19,7 @@ class User(UserMixin):
         try:
             """Fetch user from PostgreSQL by ID."""
             cur = conn.cursor()
-            cur.execute("SELECT id, username, citizen_id, type FROM users WHERE id = %s", (userId,))
+            cur.execute("SELECT id, username, citizen_id, user_type FROM users WHERE id = %s", (userId,))
             user_data = cur.fetchone()
             cur.close()
             if user_data:

@@ -15,6 +15,15 @@ const DataDashboard = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      
+      console.log('Sending request with data:', {
+        Query: "STATS",
+        Data: {
+          village_id: '1',
+          stat_type: 'all'
+        }
+      });
+
       const response = await axios.post(
         `${import.meta.env.VITE_APP_URI}/get_stats`,
         {
@@ -32,16 +41,20 @@ const DataDashboard = () => {
         }
       );
 
+      console.log('Received response:', response.data);
+
       if (response.data.Status === 'Success') {
         setStats(response.data.Data.Result);
         setError(null);
       } else {
-        setError(response.data.Message);
+        setError(response.data.Message || 'Failed to fetch statistics');
         alert(response.data.Message || 'Failed to fetch statistics');
       }
     } catch (err) {
-      setError(err.message);
-      alert(err.response?.data?.Message || err.message || 'Error fetching statistics');
+      console.error('Error in fetchStats:', err);
+      const errorMessage = err.response?.data?.Message || err.message || 'Error fetching statistics';
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -89,29 +102,29 @@ const DataDashboard = () => {
       </section>
 
       {/* Education Section */}
-      <section className="dashboard-section">
-        <h2>Education Distribution</h2>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Qualification</th>
-                <th>Count</th>
-                <th>Percentage</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.education.map((edu, index) => (
-                <tr key={index}>
-                  <td>{edu.educational_qualification}</td>
-                  <td>{edu.count}</td>
-                  <td>{edu.percentage}%</td>
+        {/* <section className="dashboard-section">
+          <h2>Education Distribution</h2>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Qualification</th>
+                  <th>Count</th>
+                  <th>Percentage</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {stats.education.map((edu, index) => (
+                  <tr key={index}>
+                    <td>{edu.educational_qualification}</td>
+                    <td>{edu.count}</td>
+                    <td>{edu.percentage}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section> */}
 
       {/* Age Distribution */}
       <section className="dashboard-section">

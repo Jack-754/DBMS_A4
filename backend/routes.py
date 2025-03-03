@@ -798,6 +798,8 @@ def delete():
 def get_stats():
     try:
         data = request.get_json()
+        print("Received request data:", data)  # Debug log
+
         if not data or 'Query' not in data or 'Data' not in data:
             return jsonify({
                 "Status": "Failed",
@@ -807,15 +809,29 @@ def get_stats():
                     "Result": []
                 },
                 "error": "Invalid request format"
-            }), 200
+            }), 400  # Changed to 400 for invalid request
 
         # Extract village info from request
         village_id = data['Data'].get('village_id')
-        stat_type = data['Data'].get('stat_type', 'all')  # Default to all stats if not specified
+        stat_type = data['Data'].get('stat_type', 'all')
+
+        print(f"Processing request for village_id: {village_id}, stat_type: {stat_type}")  # Debug log
+
+        # Validate village_id
+        if not village_id:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Village ID is required",
+                "Data": {
+                    "Query": "STATS",
+                    "Result": []
+                },
+                "error": "Missing village_id"
+            }), 400
 
         # Base WHERE clause for village-specific queries
-        village_filter = f"WHERE v.id = {village_id}" if village_id else ""
-
+        village_filter = f"WHERE v.id = %s"  # Changed to use parameterized query
+        
         stats_queries = {
             "demographics": f"""
                 SELECT 
@@ -831,18 +847,18 @@ def get_stats():
                 {village_filter}
                 GROUP BY v.id, v.name
             """,
-            "education": f"""
-                SELECT 
-                    v.name as village_name,
-                    educational_qualification,
-                    COUNT(*) as count,
-                    ROUND(COUNT()::decimal / SUM(COUNT()) OVER (PARTITION BY v.id) * 100, 2) as percentage
-                FROM village v
-                LEFT JOIN citizens c ON v.id = c.village_id
-                {village_filter}
-                GROUP BY v.id, v.name, educational_qualification
-                ORDER BY count DESC
-            """,
+            # "education": f"""
+            #     SELECT 
+            #         v.name as village_name,
+            #         educational_qualification,
+            #         COUNT(*) as count,
+            #         ROUND(COUNT()::decimal / SUM(COUNT()) OVER (PARTITION BY v.id) * 100, 2) as percentage
+            #     FROM village v
+            #     LEFT JOIN citizens c ON v.id = c.village_id
+            #     {village_filter}
+            #     GROUP BY v.id, v.name, educational_qualification
+            #     ORDER BY count DESC
+            # """,
             "age": f"""
                 SELECT 
                     v.name as village_name,
@@ -890,37 +906,44 @@ def get_stats():
         results = {}
         cursor = conn.cursor()
 
-        if stat_type == 'all':
-            # Execute all queries
-            for stat_name, query in stats_queries.items():
-                cursor.execute(query)
+        try:
+            if stat_type == 'all':
+                # Execute all queries with proper parameter passing
+                for stat_name, query in stats_queries.items():
+                    print(f"Executing {stat_name} query")  # Debug log
+                    cursor.execute(query, (village_id,))
+                    columns = [desc[0] for desc in cursor.description]
+                    query_results = cursor.fetchall()
+                    results[stat_name] = [
+                        {columns[i]: value for i, value in enumerate(row)}
+                        for row in query_results
+                    ]
+            elif stat_type in stats_queries:
+                print(f"Executing single query for {stat_type}")  # Debug log
+                cursor.execute(stats_queries[stat_type], (village_id,))
                 columns = [desc[0] for desc in cursor.description]
                 query_results = cursor.fetchall()
-                results[stat_name] = [
+                results[stat_type] = [
                     {columns[i]: value for i, value in enumerate(row)}
                     for row in query_results
                 ]
-        elif stat_type in stats_queries:
-            # Execute specific query
-            cursor.execute(stats_queries[stat_type])
-            columns = [desc[0] for desc in cursor.description]
-            query_results = cursor.fetchall()
-            results[stat_type] = [
-                {columns[i]: value for i, value in enumerate(row)}
-                for row in query_results
-            ]
-        else:
-            return jsonify({
-                "Status": "Failed",
-                "Message": "Invalid stat_type",
-                "Data": {
-                    "Query": "STATS",
-                    "Result": []
-                },
-                "error": "Invalid stat_type"
-            }), 200
+            else:
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": "Invalid stat_type",
+                    "Data": {
+                        "Query": "STATS",
+                        "Result": []
+                    },
+                    "error": "Invalid stat_type"
+                }), 400
 
-        cursor.close()
+        except Exception as db_error:
+            print(f"Database error: {str(db_error)}")  # Debug log
+            raise
+
+        finally:
+            cursor.close()
 
         return jsonify({
             "Status": "Success",
@@ -933,11 +956,12 @@ def get_stats():
         }), 200
 
     except Exception as e:
+        print(f"Error in get_stats: {str(e)}")  # Debug log
         if 'cursor' in locals():
             cursor.close()
         return jsonify({
             "Status": "Failed",
-            "Message": "Error retrieving statistics",
+            "Message": f"Error retrieving statistics: {str(e)}",
             "Data": {
                 "Query": "STATS",
                 "Result": []

@@ -36,6 +36,12 @@ const profileStyles = {
         paddingBottom: '10px',
         marginBottom: '20px',
         color: '#2c3e50',
+    },
+    tableContainer: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        color: '#333',
     }
 };
 
@@ -133,8 +139,8 @@ const Profile = ({ type }) => {
                                 
                                 <div style={profileStyles.profileSection}>
                                     <h3 style={profileStyles.sectionTitle}>Additional Information</h3>
-                                    <div style={profileStyles.profileField}>Vaccination Details
-                                        <DataTable 
+                                    <div style={profileStyles.tableContainer}><div>Vaccination Details</div>
+                                        <div><DataTable 
                                             tableName="vaccination" 
                                             preFilters={{
                                                 citizen_id: {
@@ -143,8 +149,9 @@ const Profile = ({ type }) => {
                                                 }
                                             }} 
                                         />
+                                        </div>
                                     </div>
-                                    <div style={profileStyles.profileField}>IT Details
+                                    <div style={profileStyles.tableContainer}>IT Details
                                         <DataTable 
                                             tableName="tax_filing" 
                                             preFilters={{
@@ -155,7 +162,7 @@ const Profile = ({ type }) => {
                                             }} 
                                         />
                                     </div>
-                                    <div style={profileStyles.profileField}>Assets
+                                    {/* <div style={profileStyles.tableContainer}>Assets
                                         <DataTable 
                                             tableName="assets" 
                                             preFilters={{
@@ -165,8 +172,8 @@ const Profile = ({ type }) => {
                                                 }
                                             }} 
                                         />
-                                    </div>
-                                    <div style={profileStyles.profileField}>Certificates
+                                    </div> */}
+                                    <div style={profileStyles.tableContainer}>Certificates
                                         <DataTable 
                                             tableName="certificates" 
                                             preFilters={{

@@ -147,7 +147,7 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
         className="w100"
         type="text"
         name="email"
-        placeholder="Email"
+        placeholder="Username"
         autoComplete="off"
         value={email}
         onChange={(e) => setEmail(e.target.value)}

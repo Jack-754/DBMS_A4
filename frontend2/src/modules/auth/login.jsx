@@ -100,7 +100,7 @@ const Login = ({ className, onBackClick }) => {
       {/* Email Input */}
       <input 
         type="text" 
-        placeholder="Email" 
+        placeholder="Username" 
         autoComplete="off" 
         value={email} 
         onChange={(e) => setEmail(e.target.value)} 

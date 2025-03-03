@@ -1,4 +1,4 @@
--- VILLAGE TABLE (Independent)
+--VILLAGE TABLE (Independent)
 CREATE TABLE IF NOT EXISTS village (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE
@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS village (
 CREATE TABLE IF NOT EXISTS households (
     id SERIAL PRIMARY KEY,
     primary_residence VARCHAR(100) NOT NULL,
-    head_of_household INT UNIQUE -- Ensures only one head per household
+    head_of_household INT UNIQUE 
 );
 
 -- CITIZENS TABLE (Depends on VILLAGE and HOUSEHOLDS)
@@ -121,9 +121,10 @@ CREATE TABLE IF NOT EXISTS panchayat_employees (
     FOREIGN KEY (village_id) REFERENCES village(id) ON DELETE CASCADE
 );
 
--- Enforce that only one 'PRADHAN' exists per village
-CREATE UNIQUE INDEX unique_pradhan_per_village ON panchayat_employees (village_id) WHERE position = 'PRADHAN';
-
+-- Create a partial unique index for PRADHAN position
+CREATE UNIQUE INDEX unique_pradhan_per_village 
+ON panchayat_employees (village_id)
+WHERE position = 'PRADHAN';
 
 -- SCHEMES TABLE (Independent)
 CREATE TABLE IF NOT EXISTS schemes (
@@ -138,13 +139,13 @@ CREATE TABLE IF NOT EXISTS scheme_enrollment (
     citizen_id INT NOT NULL,
     scheme_id INT NOT NULL,
     enrollment_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    enrollment_year INT,
+    enrollment_year INT GENERATED ALWAYS AS (EXTRACT (year FROM enrollment_date)) STORED,
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE,
     FOREIGN KEY (scheme_id) REFERENCES schemes(id) ON DELETE CASCADE,
     CONSTRAINT unique_citizen_scheme_per_year UNIQUE (citizen_id, scheme_id, enrollment_year)
 );
-
 -- Create trigger to calculate enrollment_year automatically
+
 CREATE OR REPLACE FUNCTION calculate_enrollment_year()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -171,7 +172,6 @@ CREATE TABLE IF NOT EXISTS vaccination (
 	date_administered DATE NOT NULL DEFAULT CURRENT_DATE,
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
 );
-
 CREATE TABLE census_data (
     citizen_id INT NOT NULL,
     event_type TEXT NOT NULL,
@@ -207,7 +207,6 @@ INSERT INTO households (primary_residence) VALUES
     ('987 Cedar St, Highland'),
     ('741 Birch St, Sunnyvale'),
     ('852 Willow St, Riverside');
-
 
 -- Insert citizens
 INSERT INTO citizens (name, dob, gender, phone, household_id, educational_qualification, village_id) VALUES 
@@ -334,8 +333,8 @@ INSERT INTO certificates (cert_type, citizen_issued) VALUES
     ('Residence Certificate', 19),
     ('Birth Certificate', 20);
 
-
 -- Insert assets
+
 INSERT INTO assets (asset_type, location, date_of_registration) VALUES 
     ('Land', 'North Greenwood Plot 12', '2022-01-15'),
     ('House', '123 Main St, Greenwood', '2022-03-20'),
@@ -388,178 +387,38 @@ INSERT INTO expenditure (category, amount, date_spent) VALUES
     ('Community Hall Renovation', 450000, '2023-12-25'),
     ('Emergency Services', 180000, '2024-01-30');
 
+-- Insert census_data entries
+INSERT INTO census_data (citizen_id, event_type, event_date) VALUES 
+    (1, 'Marriage', '2005-06-15'),
+    (2, 'Marriage', '2005-06-15'),
+    (3, 'Marriage', '2000-03-22'),
+    (4, 'Marriage', '2000-03-22'),
+    (5, 'Marriage', '2015-08-10'),
+    (6, 'Marriage', '2015-08-10'),
+    (7, 'Marriage', '2018-12-25'),
+    (8, 'Marriage', '2018-12-25'),
+    (9, 'Birth', '1985-08-22'),
+    (10, 'Birth', '1987-04-17'),
+    (11, 'Divorce', '2022-11-30'),
+    (12, 'Divorce', '2022-11-30'),
+    (13, 'Marriage', '2019-02-14'),
+    (14, 'Marriage', '2019-02-14'),
+    (15, 'Death', '2023-09-01');
 
--- -- USERS TABLE
--- CREATE TABLE IF NOT EXISTS users (
---    id SERIAL PRIMARY KEY NOT NULL,
---    username VARCHAR(255) NOT NULL UNIQUE,
---    password VARCHAR(255) NOT NULL, -- Increased length for hashed passwords
---    type TEXT NOT NULL CHECK (type IN ('USER', 'GOVERNMENT_MONITOR', 'PANCHAYAT_EMPLOYEES', 'SYSTEM_ADMINISTRATOR')),
---    citizen_id INT,
---    CONSTRAINT citizen_id_required CHECK (
---        (type IN ('USER', 'PANCHAYAT_EMPLOYEES') AND citizen_id IS NOT NULL) OR
---        (type IN ('GOVERNMENT_MONITOR', 'SYSTEM_ADMINISTRATOR') AND citizen_id IS NULL)
---    ),
---    FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
--- );
-
--- -- CITIZENS TABLE
--- CREATE TABLE IF NOT EXISTS citizens (
---    id SERIAL PRIMARY KEY NOT NULL,
---    name VARCHAR(255) NOT NULL,
---    dob DATE NOT NULL,
---    gender CHAR(1) NOT NULL CHECK (gender IN ('M', 'F', 'O')),
---    phone VARCHAR(10) NOT NULL CHECK (phone ~ '^[0-9]{10}$'), -- Ensures valid 10-digit phone number
---    household_id INT NOT NULL,
---    educational_qualification TEXT NOT NULL CHECK (
---        educational_qualification IN ('Illiterate', 'Primary', 'Secondary', '10th', '12th', 'Graduate', 'Post-Graduate')
---    ),
---    mother_id INT,
---    father_id INT,
---    village_id INT,
---    FOREIGN KEY (mother_id) REFERENCES citizens(id) ON DELETE SET NULL,
---    FOREIGN KEY (father_id) REFERENCES citizens(id) ON DELETE SET NULL,
---    FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE,
---    FOREIGN KEY (village_id) REFERENCES village(id) ON DELETE CASCADE
--- );
-
--- -- TAX FILING TABLE
--- CREATE TABLE IF NOT EXISTS tax_filing (
---     receipt_no SERIAL PRIMARY KEY,
---     amount INT NOT NULL CHECK (amount > 0),
---     citizen_id INT NOT NULL,
---     filing_date DATE NOT NULL DEFAULT CURRENT_DATE,
---     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
--- );
-
--- -- INCOME DECLARATIONS TABLE
--- CREATE TABLE IF NOT EXISTS income_declarations (
---     receipt_no SERIAL PRIMARY KEY,
---     amount INT NOT NULL CHECK (amount > 0),
---     citizen_id INT NOT NULL,
---     filing_date DATE NOT NULL DEFAULT CURRENT_DATE,
---     source VARCHAR(50) NOT NULL,
---     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
--- );
-
--- -- HOUSEHOLD TABLE
--- CREATE TABLE IF NOT EXISTS households (
---     id SERIAL PRIMARY KEY,
---     household_member_count INT NOT NULL CHECK (household_member_count > 0),
---     primary_residence VARCHAR(100) NOT NULL,
---     head_of_household INT,
---     FOREIGN KEY (head_of_household) REFERENCES citizens(id) ON DELETE SET NULL
--- );
-
-
-
-
-
--- -- GOVERNMENT MONITOR TABLE
--- CREATE TABLE IF NOT EXISTS government_monitor (
---     id SERIAL PRIMARY KEY,
---     department VARCHAR(50) NOT NULL,
---     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
--- );
-
--- -- RECORDS TABLE
--- CREATE TABLE IF NOT EXISTS records (
---     id SERIAL PRIMARY KEY,
---     citizen_id INT NOT NULL,
---     record_type VARCHAR(50) NOT NULL,
---     details TEXT NOT NULL,
---     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
--- );
-
--- -- CENSUS DATA TABLE
--- CREATE TABLE IF NOT EXISTS census_data (
---     id SERIAL PRIMARY KEY,
---     year INT NOT NULL CHECK (year >= 1900 AND year <= EXTRACT(YEAR FROM CURRENT_DATE)),
---     total_population INT NOT NULL CHECK (total_population > 0),
---     number_of_households INT NOT NULL CHECK (number_of_households > 0)
--- );
-
--- -- ENVIRONMENT DATA TABLE
--- CREATE TABLE IF NOT EXISTS environment_data (
---     id SERIAL PRIMARY KEY,
---     year INT NOT NULL CHECK (year >= 1900 AND year <= EXTRACT(YEAR FROM CURRENT_DATE)),
---     air_quality_index INT CHECK (air_quality_index BETWEEN 0 AND 500),
---     water_quality_index INT CHECK (water_quality_index BETWEEN 0 AND 100),
---     forest_cover_percentage DECIMAL(5,2) CHECK (forest_cover_percentage BETWEEN 0 AND 100)
--- );
-
--- -- AGRICULTURAL DATA TABLE
--- CREATE TABLE IF NOT EXISTS agricultural_data (
---     id SERIAL PRIMARY KEY,
---     year INT NOT NULL CHECK (year >= 1900 AND year <= EXTRACT(YEAR FROM CURRENT_DATE)),
---     total_crop_production INT NOT NULL CHECK (total_crop_production > 0),
---     irrigated_land_percentage DECIMAL(5,2) CHECK (irrigated_land_percentage BETWEEN 0 AND 100)
--- );
-
--- -- EXPENDITURE TABLE
--- CREATE TABLE IF NOT EXISTS expenditure (
---     id SERIAL PRIMARY KEY,
---     category VARCHAR(50) NOT NULL,
---     amount INT NOT NULL CHECK (amount > 0),
---     date_spent DATE NOT NULL DEFAULT CURRENT_DATE
--- );
-
--- -- VILLAGE TABLE
--- CREATE TABLE IF NOT EXISTS village (
---     id SERIAL PRIMARY KEY,
---     name VARCHAR(50) NOT NULL UNIQUE
--- );
-
--- -- TAX FILING TABLE (One filing per citizen per financial year)
--- CREATE TABLE IF NOT EXISTS tax_filing (
---     receipt_no SERIAL PRIMARY KEY,
---     amount INT NOT NULL CHECK (amount > 0),
---     citizen_id INT NOT NULL,
---     filing_date DATE NOT NULL DEFAULT CURRENT_DATE,
---     financial_year VARCHAR(9) GENERATED ALWAYS AS (
---         CASE 
---             WHEN EXTRACT(MONTH FROM filing_date) >= 4 
---             THEN CONCAT(EXTRACT(YEAR FROM filing_date), '-', EXTRACT(YEAR FROM filing_date) + 1)
---             ELSE CONCAT(EXTRACT(YEAR FROM filing_date) - 1, '-', EXTRACT(YEAR FROM filing_date))
---         END
---     ) STORED,
---     CONSTRAINT unique_tax_filing_per_year UNIQUE (citizen_id, financial_year),
---     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
--- );
-
--- -- INCOME DECLARATIONS TABLE (One declaration per citizen per financial year)
--- CREATE TABLE IF NOT EXISTS income_declarations (
---     receipt_no SERIAL PRIMARY KEY,
---     amount INT NOT NULL CHECK (amount > 0),
---     citizen_id INT NOT NULL,
---     filing_date DATE NOT NULL DEFAULT CURRENT_DATE,
---     source VARCHAR(50) NOT NULL,
---     financial_year VARCHAR(9) GENERATED ALWAYS AS (
---         CASE 
---             WHEN EXTRACT(MONTH FROM filing_date) >= 4 
---             THEN CONCAT(EXTRACT(YEAR FROM filing_date), '-', EXTRACT(YEAR FROM filing_date) + 1)
---             ELSE CONCAT(EXTRACT(YEAR FROM filing_date) - 1, '-', EXTRACT(YEAR FROM filing_date))
---         END
---     ) STORED,
---     CONSTRAINT unique_income_declaration_per_year UNIQUE (citizen_id, financial_year),
---     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
--- );
--- -- CREATE TABLE IF NOT EXISTS citizens (
--- --    id SERIAL PRIMARY KEY NOT NULL,
--- --    name VARCHAR(255) NOT NULL,
--- --    dob DATE NOT NULL,
--- --    age INT GENERATED ALWAYS AS (DATE_PART('year', AGE(dob))) STORED,
--- --    gender CHAR(1) NOT NULL CHECK (gender IN ('M', 'F', 'O')),
--- --    phone VARCHAR(10) NOT NULL CHECK (phone ~ '^[0-9]{10}$'), -- Ensures valid 10-digit phone number
--- --    household_id INT NOT NULL,
--- --    educational_qualification TEXT NOT NULL CHECK (
--- --        educational_qualification IN ('Illiterate', 'Primary', 'Secondary', '10th', '12th', 'Graduate', 'Post-Graduate')
--- --    ),
--- --    mother_id INT,
--- --    father_id INT,
--- --    FOREIGN KEY (mother_id) REFERENCES citizens(id) ON DELETE SET NULL,
--- --    FOREIGN KEY (father_id) REFERENCES citizens(id) ON DELETE SET NULL,
--- --    FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE
--- -- );
-
+-- Insert land_records entries
+INSERT INTO land_records (citizen_id, area_acres, crop_type) VALUES 
+    (1, 5.50, 'Rice'),
+    (1, 3.25, 'Wheat'),
+    (3, 4.75, 'Cotton'),
+    (5, 6.00, 'Sugarcane'),
+    (6, 2.50, 'Maize'),
+    (7, 8.25, 'Rice'),
+    (9, 3.75, 'Wheat'),
+    (11, 5.00, 'Cotton'),
+    (13, 7.50, 'Sugarcane'),
+    (14, 4.25, 'Maize'),
+    (15, 6.75, 'Rice'),
+    (17, 3.50, 'Wheat'),
+    (18, 5.25, 'Cotton'),
+    (19, 4.00, 'Sugarcane'),
+    (20, 2.75, 'Maize');

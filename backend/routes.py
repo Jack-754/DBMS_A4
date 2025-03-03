@@ -1,47 +1,52 @@
 import os
 import secrets
-from datetime import datetime,time
-from flask import render_template, url_for, flash, redirect, request, jsonify
-from flask import Flask, session, redirect, url_for, request
-from functools import wraps
-from DBMS.models import User
-from flask_login import login_user, current_user, logout_user, login_required
-from run import conn
+from datetime import datetime, time, timedelta
 import psycopg2
-from DBMS import app
+from flask import (Flask, flash, jsonify, redirect, render_template, request,session, url_for)
+from functools import wraps
+from flask_cors import CORS
+from flask_jwt_extended import (JWTManager, create_access_token,get_jwt_identity, jwt_required)
+from flask_login import current_user, login_user, logout_user
+from backend import app
+from backend.models import User
+from run import conn
+
+# Add these configurations after creating the app
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Credentials"]
+    }
+})
+
+app.config['JWT_SECRET_KEY'] = 'your-secret-key-here'  # Change this to a secure secret key
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+jwt = JWTManager(app)
 
 
-@app.route("/logout")
-def logout():
-    logout_user()
-    return jsonify({
-                "Status": "Success",
-                "Message": "Logout successful",
-                "Data": {
-                    "Query": "LOGOUT",
-                    "Result": []
-                },
-                "error": None
-            })
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['POST', 'OPTIONS'])
 def login():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
     try:
         data = request.get_json()
-        print(f"Received data is: \n {data}")
-        if not data or "Data" not in data or 'userId' not in data['Data'] or 'password' not in data['Data']:
+        if not data or "Data" not in data or 'username' not in data['Data'] or 'password' not in data['Data']:
             return jsonify({
                 "Status": "Failed",
-                "Message": "Missing required fields: userId and password",
+                "Message": "Missing required fields: username and password",
                 "Data": {
                     "Query": "LOGIN",
                     "Result": []
                 },
                 "error": "Missing required fields"
-            })
-        user = User.authenticate(data['Data']['userId'], data['Data']['password'])
+            }), 400
+
+        # Modify the User.authenticate method according to your needs
+        user = User.authenticate(data['Data']['username'], data['Data']['password'])
         if user:
-            login_user(user)
+            access_token = create_access_token(identity=user.id)
             return jsonify({
                 "Status": "Success",
                 "Message": "Login successful",
@@ -50,11 +55,12 @@ def login():
                     "Result": [{
                         "userId": user.id,
                         "username": user.username,
-                        "type": user.user_type
+                        "type": user.type
                     }]
                 },
-                "error": None
-            })
+                "error": None,
+                "access_token": access_token
+            }), 200
         else:
             return jsonify({
                 "Status": "Failed",
@@ -64,7 +70,7 @@ def login():
                     "Result": []
                 },
                 "error": "Authentication failed"
-            })
+            }), 401
     except Exception as e:
         return jsonify({
             "Status": "Failed",
@@ -74,22 +80,12 @@ def login():
                 "Result": []
             },
             "error": str(e)
-        })
+        }), 500
 
 @app.route('/register', methods=['POST'])
 def register():
     response = {}
-    if current_user.is_authenticated:
-        response.update({
-            "status": "Failed",
-            "message": "User already logged in",
-            "Data": {
-                "Query" : "REGISTER",
-                "Data" : []
-            },
-            "error": "User already logged in"
-            })
-        return jsonify(response)
+
     try:
         data = request.get_json()
         if not data:
@@ -191,28 +187,27 @@ def register():
 
 def get_citizen_profile(citizen_id):
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, dob, gender, phone, household_id, educational_qualification, village_id FROM citizens WHERE id=%s", (citizen_id,))
+    cursor.execute(f"SELECT id, name, dob, gender, phone, household_id, educational_qualification, village_id FROM citizens WHERE id={citizen_id};")
     profile = cursor.fetchone()
-    cursor.close()
     if profile:
         return {
             'id': profile[0],
             'name': profile[1],
-            'dob': profile[2].strftime('%Y-%m-%d') if profile[2] else None,
+            'dob': profile[2],
             'gender': profile[3],
             'phone': profile[4],
             'household_id': profile[5],
-            'educational_qualification': profile[6],
+            'educational_id': profile[6],
             'village_id': profile[7]
         }
     else:
         return None
 
-@app.route('/citizen/profile', methods=['POST'])
-@login_required
+@app.route('/profile', methods=['GET'])
+@jwt_required()
 def citizen_profile():
     try:
-        user_id = current_user.id
+        user_id = get_jwt_identity()
         profile = get_citizen_profile(user_id)
         if profile:
             return jsonify({
@@ -245,29 +240,80 @@ def citizen_profile():
             "error": str(e)
         }), 500
 
+
+def get_citizen_assets(owner_id):
+    cursor = conn.cursor()
+    cursor.execute("SELECT asset_id, asset_type, date_of_registration FROM assets WHERE owner_id=%s", (owner_id,))
+    assets = cursor.fetchall()
+    cursor.close()
+    
+    if assets:
+        return [{
+            'id': asset[0],
+            'citizen_id': owner_id,
+            'asset_type': asset[1],
+            'date_of_registration': asset[2]
+        } for asset in assets]
+    return []
+
+@app.route('/citizen/assets', methods=['GET'])
+@jwt_required()
+def citizen_assets():
+    try:
+        user_id = get_jwt_identity()
+        assets = get_citizen_assets(user_id)
+        if assets:
+            return jsonify({
+                "Status": "Success",
+                "Message": "Assets fetched successfully",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": assets
+                },
+                "error": None
+            }), 200
+        else:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "No assets with user found",
+                "Data": {
+                    "Query": "SELECT",
+                    "Result": []
+                },
+                "error": "Not found"
+            }), 404
+    except Exception as e:
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error fetching assets",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+
 def get_citizen_tax_filings(citizen_id):
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT receipt_no, amount, filing_date, financial_year 
+        SELECT receipt_no, amount, filing_date
         FROM tax_filing 
         WHERE citizen_id=%s
         ORDER BY filing_date DESC""", (citizen_id,))
     filings = cursor.fetchall()
     cursor.close()
-    
     if filings:
         return [{
             'receipt_no': filing[0],
             'amount': filing[1],
             'filing_date': filing[2].strftime('%Y-%m-%d'),
-            'financial_year': filing[3]
         } for filing in filings]
     return []
 
-@app.route('/citizen/tax', methods=['POST'])
-@login_required
+@app.route('/citizen/tax', methods=['GET'])
+@jwt_required()
 def citizen_tax_filings():
-    user_id = current_user.id
+    user_id = get_jwt_identity()
     tax_filings = get_citizen_tax_filings(user_id)
     if tax_filings:
         return jsonify({
@@ -298,10 +344,10 @@ def get_citizen_certificates(citizen_id):
         } for cert in certificates]
     return []
 
-@app.route('/citizen/certificates', methods=['POST'])
-@login_required
+@app.route('/citizen/certificates', methods=['GET'])
+@jwt_required()
 def citizen_certificates():
-    user_id = current_user.id
+    user_id = get_jwt_identity()
     certificates = get_citizen_certificates(user_id)
     if certificates:
         return jsonify({
@@ -332,10 +378,10 @@ def get_citizen_schemes(citizen_id):
         } for enrollment in enrollments]
     return []
 
-@app.route('/citizen/enrolled_schemes', methods=['POST'])
-@login_required
+@app.route('/citizen/enrolled_schemes', methods=['GET'])
+@jwt_required()
 def citizen_enrolled_schemes():
-    user_id = current_user.id
+    user_id = get_jwt_identity()
     schemes = get_citizen_schemes(user_id)
     if schemes:
         return jsonify({
@@ -349,11 +395,10 @@ def citizen_enrolled_schemes():
         }), 200
 
 @app.route('/query_table', methods=['POST'])
-@login_required
 def query_table():
     try:
         data = request.get_json()
-        
+        print(data)
         if not data or 'Query' not in data or 'Data' not in data:
             return jsonify({
                 "Status": "Failed",
@@ -367,10 +412,11 @@ def query_table():
 
         # Extract table name and filters from request
         table_name = data['Data'].get('table_name')
+        print(table_name)
         filters = data['Data'].get('filters', {})
 
         # Basic SQL injection prevention for table name
-        if not table_name or not table_name.isalnum():
+        if not table_name:
             return jsonify({
                 "Status": "Failed",
                 "Message": "Invalid table name",
@@ -399,19 +445,7 @@ def query_table():
             }
 
             for key, filter_data in filters.items():
-                if not key.isalnum():  # Basic SQL injection prevention
-                    return jsonify({
-
-                        "Status": "Failed",
-                        "Message": "Invalid filter field",
-                        "Data": {
-                            "Query": "SELECT",
-                            "Result": []
-                        },
-                        "error": "Invalid filter field"
-                    }), 200
-
-                operator = filter_data.get('operator', 'eq')  # Default to equals
+                operator = filter_data['operator']  
                 value = filter_data.get('value')
 
                 if operator not in valid_operators:
@@ -447,6 +481,7 @@ def query_table():
 
         # Execute query
         with conn.cursor() as cur:
+            query += ";"
             cur.execute(query, params)
             columns = [desc[0] for desc in cur.description]
             results = cur.fetchall()
@@ -455,7 +490,7 @@ def query_table():
             formatted_results = []
             for row in results:
                 formatted_results.append({columns[i]: value for i, value in enumerate(row)})
-
+          
         return jsonify({
             "Status": "Success",
             "Message": "Query executed successfully",
@@ -463,7 +498,8 @@ def query_table():
                 "Query": "SELECT",
                 "Result": formatted_results
             },
-            "error": None
+            "error": None,
+            
         }), 200
 
     except Exception as e:
@@ -516,8 +552,8 @@ def update_record():
         where_clause = ' AND '.join([f"{key} = %s" for key in filters.keys()])
         query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause}"
 
-        # Prepare parameters
-        params = list(new_values.values()) + list(filters.values())
+        # Prepare parameters - Extract actual values from filters
+        params = list(new_values.values()) + [filters[key]['value'] for key in filters.keys()]
 
         cursor = conn.cursor()
         cursor.execute(query, params)
@@ -551,26 +587,26 @@ def update_record():
 
 
 @app.route('/insert', methods=['POST'])
+# @jwt_required()
 def insert_record():
     try:
         data = request.get_json()
 
-        # Validate required fields
-        if not all(key in data for key in ['table_name', 'values']):
+        if not all(key in data["Data"] for key in ['table_name', 'values']):
             return jsonify({
                 'status': 'error',
                 'message': 'Missing required fields',
                 'status_code': 200
             }), 200
 
-        table_name = data['table_name']
-        values = data['values']
+        table_name = data["Data"]['table_name']
+        values = data["Data"]['values']
 
         # Construct INSERT query
         columns = ', '.join(values.keys())
         placeholders = ', '.join(['%s'] * len(values))
-        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders});"
+        print(query)
         cursor = conn.cursor()
         cursor.execute(query, list(values.values()))
         conn.commit()
@@ -594,50 +630,470 @@ def insert_record():
 
 
 @app.route('/delete', methods=['POST'])
-def delete_record():
+def delete():
     try:
         data = request.get_json()
-
-        # Validate required fields
-        if not all(key in data for key in ['table_name', 'filters']):
+        
+        if not data or 'Query' not in data or 'Data' not in data:
             return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields',
-                'status_code': 200
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": []
+                },
+                "error": "Invalid request format"
             }), 200
 
-        table_name = data['table_name']
-        filters = data['filters']
+        # Extract table name and filters from request
+        table_name = data['Data'].get('table_name')
+        print(table_name)
+        filters = data['Data'].get('filters', {})
+        print(filters)
 
-        # Construct DELETE query
-        where_clause = ' AND '.join([f"{key} = %s" for key in filters.keys()])
-        query = f"DELETE FROM {table_name} WHERE {where_clause}"
+        # Basic SQL injection prevention for table name
+        if not table_name:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid table name",
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": []
+                },
+                "error": "Invalid table name"
+            }), 200
 
-        cursor = conn.cursor()
-        cursor.execute(query, list(filters.values()))
-        affected_rows = cursor.rowcount
-        conn.commit()
+        # Construct the SQL query
+        query = f"DELETE FROM {table_name}"
+        params = []
 
+        # Add WHERE clause if filters exist
+        if filters:
+            where_conditions = []
+            valid_operators = {
+                'eq': '=',
+                'gt': '>',
+                'lt': '<',
+                'gte': '>=',
+                'lte': '<=',
+                'ne': '!=',
+                'between': 'BETWEEN'
+            }
+
+            for key, filter_data in filters.items():
+                operator = filter_data['operator']  
+                value = filter_data.get('value')
+
+                if operator not in valid_operators:
+                    return jsonify({
+                        "Status": "Failed",
+                        "Message": f'Invalid operator: {operator}',
+                        "Data": {
+                            "Query": "DELETE",
+                            "Result": []
+                        },
+                        "error": f"Invalid operator: {operator}"
+                    }), 200
+
+                if operator == 'between':
+                    if not isinstance(value, list) or len(value) != 2:
+                        return jsonify({
+                            "Status": "Failed",
+                            "Message": "BETWEEN operator requires a list of two values",
+                            "Data": {
+                                "Query": "DELETE",
+                                "Result": []
+                            },
+                            "error": "BETWEEN operator requires a list of two values"
+                        }), 200
+
+                    where_conditions.append(f"{key} BETWEEN %s AND %s")
+                    params.extend(value)
+                else:
+                    where_conditions.append(f"{key} {valid_operators[operator]} %s")
+                    params.append(value)
+
+            query += " WHERE " + " AND ".join(where_conditions)
+            print(query)
+            print(params)
+
+        # Execute query
+        with conn.cursor() as cur:
+            query += ";"
+            cur.execute(query, params)
+            print(query)
+
+            conn.commit()
         return jsonify({
-            'status': 'success',
-            'message': f'Deleted {affected_rows} rows successfully',
-            'status_code': 200
+            "Status": "Success",
+            "Message": "DELETE executed successfully",
+            "Data": {
+                "Query": "DELETE",
+                "Result": []
+            },
+            "error": None
         }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'status_code': 500
+            "Status": "Failed",
+            "Message": "Error executing query",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
         }), 500
-    finally:
+
+@app.route('/get_stats', methods=['POST'])
+def get_stats():
+    try:
+        data = request.get_json()
+        if not data or 'Query' not in data or 'Data' not in data:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "STATS",
+                    "Result": []
+                },
+                "error": "Invalid request format"
+            }), 200
+
+        # Extract village info from request
+        village_id = data['Data'].get('village_id')
+        stat_type = data['Data'].get('stat_type', 'all')  # Default to all stats if not specified
+
+        # Base WHERE clause for village-specific queries
+        village_filter = f"WHERE v.id = {village_id}" if village_id else ""
+
+        stats_queries = {
+            "demographics": f"""
+                SELECT 
+                    v.name as village_name,
+                    COUNT(c.id) as total_population,
+                    COUNT(CASE WHEN c.gender = 'M' THEN 1 END) as male_population,
+                    COUNT(CASE WHEN c.gender = 'F' THEN 1 END) as female_population,
+                    COUNT(CASE WHEN c.gender = 'O' THEN 1 END) as other_population,
+                    COUNT(DISTINCT h.id) as total_households
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                LEFT JOIN households h ON c.household_id = h.id
+                {village_filter}
+                GROUP BY v.id, v.name
+            """,
+            "education": f"""
+                SELECT 
+                    v.name as village_name,
+                    educational_qualification,
+                    COUNT(*) as count,
+                    ROUND(COUNT(*)::decimal / SUM(COUNT(*)) OVER (PARTITION BY v.id) * 100, 2) as percentage
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                {village_filter}
+                GROUP BY v.id, v.name, educational_qualification
+                ORDER BY count DESC
+            """,
+            "age": f"""
+                SELECT 
+                    v.name as village_name,
+                    COUNT(CASE WHEN age < 18 THEN 1 END) as under_18,
+                    COUNT(CASE WHEN age BETWEEN 18 AND 30 THEN 1 END) as age_18_30,
+                    COUNT(CASE WHEN age BETWEEN 31 AND 50 THEN 1 END) as age_31_50,
+                    COUNT(CASE WHEN age > 50 THEN 1 END) as above_50
+                FROM village v
+                LEFT JOIN (
+                    SELECT *, DATE_PART('year', AGE(CURRENT_DATE, dob)) as age 
+                    FROM citizens
+                ) c ON v.id = c.village_id
+                {village_filter}
+                GROUP BY v.id, v.name
+            """,
+            "schemes": f"""
+                SELECT 
+                    v.name as village_name,
+                    s.name as scheme_name,
+                    COUNT(DISTINCT se.citizen_id) as enrolled_citizens
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                LEFT JOIN scheme_enrollment se ON c.id = se.citizen_id
+                LEFT JOIN schemes s ON se.scheme_id = s.id
+                {village_filter}
+                GROUP BY v.id, v.name, s.id, s.name
+                ORDER BY enrolled_citizens DESC
+            """,
+            "financial": f"""
+                SELECT 
+                    v.name as village_name,
+                    COUNT(DISTINCT tf.citizen_id) as tax_payers,
+                    ROUND(AVG(tf.amount)) as avg_tax_amount,
+                    COUNT(DISTINCT id.citizen_id) as income_declarants,
+                    ROUND(AVG(id.amount)) as avg_declared_income
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                LEFT JOIN tax_filing tf ON c.id = tf.citizen_id
+                LEFT JOIN income_declarations id ON c.id = id.citizen_id
+                {village_filter}
+                GROUP BY v.id, v.name
+            """
+        }
+
+        results = {}
+        cursor = conn.cursor()
+
+        if stat_type == 'all':
+            # Execute all queries
+            for stat_name, query in stats_queries.items():
+                cursor.execute(query)
+                columns = [desc[0] for desc in cursor.description]
+                query_results = cursor.fetchall()
+                results[stat_name] = [
+                    {columns[i]: value for i, value in enumerate(row)}
+                    for row in query_results
+                ]
+        elif stat_type in stats_queries:
+            # Execute specific query
+            cursor.execute(stats_queries[stat_type])
+            columns = [desc[0] for desc in cursor.description]
+            query_results = cursor.fetchall()
+            results[stat_type] = [
+                {columns[i]: value for i, value in enumerate(row)}
+                for row in query_results
+            ]
+        else:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid stat_type",
+                "Data": {
+                    "Query": "STATS",
+                    "Result": []
+                },
+                "error": "Invalid stat_type"
+            }), 200
+
+        cursor.close()
+
+        return jsonify({
+            "Status": "Success",
+            "Message": "Statistics retrieved successfully",
+            "Data": {
+                "Query": "STATS",
+                "Result": results
+            },
+            "error": None
+        }), 200
+
+    except Exception as e:
         if 'cursor' in locals():
             cursor.close()
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error retrieving statistics",
+            "Data": {
+                "Query": "STATS",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+    
+@app.route('/universal', methods=['POST'])
+def universal():
+    cursor = None
+    try:
+        data = request.get_json()
+        if not data or 'Query' not in data or 'Data' not in data:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "UNIVERSAL",
+                    "Result": []
+                },
+                "error": "Invalid request format"
+            }), 400
+
+        query_type = data['Query']  # SELECT, UPDATE, DELETE, INSERT
+        request_data = data['Data']
+
+        # Validate basic required fields
+        if not all(key in request_data for key in ['table_name']):
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Missing table_name",
+                "Data": {
+                    "Query": query_type,
+                    "Result": []
+                },
+                "error": "Missing required fields"
+            }), 400
+
+        table_name = request_data['table_name']
+        
+        # Dictionary of valid SQL components
+        valid_components = {
+            'columns': request_data.get('columns', ['*']),
+            'filters': request_data.get('filters', {}),
+            'group_by': request_data.get('group_by', []),
+            'having': request_data.get('having', {}),
+            'order_by': request_data.get('order_by', []),
+            'limit': request_data.get('limit'),
+            'offset': request_data.get('offset'),
+            'joins': request_data.get('joins', []),
+            'aggregates': request_data.get('aggregates', []),
+            'new_values': request_data.get('new_values', {}),
+            'values': request_data.get('values', {})
+        }
+
+        # Valid operators for WHERE and HAVING clauses
+        valid_operators = {
+            'eq': '=',
+            'gt': '>',
+            'lt': '<',
+            'gte': '>=',
+            'lte': '<=',
+            'ne': '!=',
+            'like': 'LIKE',
+            'ilike': 'ILIKE',
+            'in': 'IN',
+            'between': 'BETWEEN'
+        }
+
+        # Build query based on query type
+        query = ""
+        params = []
+
+        if query_type == "SELECT":
+            # Handle aggregates and normal columns
+            select_columns = []
+            for col in valid_components['columns']:
+                if isinstance(col, dict) and 'aggregate' in col:
+                    select_columns.append(f"{col['aggregate']}({col['column']}) as {col.get('alias', col['column'])}")
+                else:
+                    select_columns.append(str(col))
+            
+            query = f"SELECT {', '.join(select_columns)} FROM {table_name}"
+
+            # Handle JOINs
+            for join in valid_components['joins']:
+                join_type = join.get('type', 'INNER').upper()
+                query += f" {join_type} JOIN {join['table']} ON {join['condition']}"
+
+        elif query_type == "INSERT":
+            if not valid_components['values']:
+                raise ValueError("No values provided for INSERT")
+            columns = ', '.join(valid_components['values'].keys())
+            placeholders = ', '.join(['%s'] * len(valid_components['values']))
+            query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+            params.extend(list(valid_components['values'].values()))
+
+        elif query_type == "UPDATE":
+            if not valid_components['new_values']:
+                raise ValueError("No new values provided for UPDATE")
+            set_clause = ', '.join([f"{key} = %s" for key in valid_components['new_values'].keys()])
+            query = f"UPDATE {table_name} SET {set_clause}"
+            params.extend(list(valid_components['new_values'].values()))
+
+        elif query_type == "DELETE":
+            query = f"DELETE FROM {table_name}"
+
+        # Add WHERE clause for SELECT, UPDATE, and DELETE
+        if valid_components['filters'] and query_type in ["SELECT", "UPDATE", "DELETE"]:
+            where_conditions = []
+            for key, filter_data in valid_components['filters'].items():
+                operator = filter_data['operator']
+                value = filter_data.get('value')
+
+                if operator not in valid_operators:
+                    raise ValueError(f"Invalid operator: {operator}")
+
+                if operator == 'between':
+                    where_conditions.append(f"{key} BETWEEN %s AND %s")
+                    params.extend(value)
+                elif operator == 'in':
+                    placeholders = ', '.join(['%s'] * len(value))
+                    where_conditions.append(f"{key} IN ({placeholders})")
+                    params.extend(value)
+                else:
+                    where_conditions.append(f"{key} {valid_operators[operator]} %s")
+                    params.append(value)
+
+            query += " WHERE " + " AND ".join(where_conditions)
+
+        # Add GROUP BY
+        if valid_components['group_by']:
+            query += f" GROUP BY {', '.join(valid_components['group_by'])}"
+
+        # Add HAVING
+        if valid_components['having']:
+            having_conditions = []
+            for key, having_data in valid_components['having'].items():
+                operator = having_data['operator']
+                value = having_data.get('value')
+                having_conditions.append(f"{key} {valid_operators[operator]} %s")
+                params.append(value)
+            query += " HAVING " + " AND ".join(having_conditions)
+
+        # Add ORDER BY
+        if valid_components['order_by']:
+            order_clauses = []
+            for order in valid_components['order_by']:
+                direction = order.get('direction', 'ASC').upper()
+                order_clauses.append(f"{order['column']} {direction}")
+            query += f" ORDER BY {', '.join(order_clauses)}"
+
+        # Add LIMIT and OFFSET
+        if valid_components['limit'] is not None:
+            query += f" LIMIT {valid_components['limit']}"
+        if valid_components['offset'] is not None:
+            query += f" OFFSET {valid_components['offset']}"
+
+        # Create a new cursor for this request
+        cursor = conn.cursor()
+        
+        # Execute query
+        cursor.execute(query, params)
+
+        result = []
+        if query_type == "SELECT":
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            result = [{columns[i]: value for i, value in enumerate(row)} for row in rows]
+        else:
+            affected_rows = cursor.rowcount
+            result = [{"affected_rows": affected_rows}]
+            conn.commit()  # Commit for non-SELECT queries
+
+        return jsonify({
+            "Status": "Success",
+            "Message": f"{query_type} executed successfully",
+            "Data": {
+                "Query": query_type,
+                "Result": result
+            },
+            "error": None
+        }), 200
+
+    except Exception as e:
+        if cursor:
+            cursor.execute("ROLLBACK")  # Explicitly rollback on error
+            conn.commit()  # Reset the connection state
+        return jsonify({
+            "Status": "Failed",
+            "Message": f"Error executing {query_type}",
+            "Data": {
+                "Query": query_type,
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+    finally:
+        if cursor:
+            cursor.close()
+
 
 def admin_required(f):
     @wraps(f)
-    @login_required
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.user_type != 'SYSTEM_ADMINISTRATOR':
             return jsonify({
@@ -1011,6 +1467,157 @@ def admin_add_village():
             "Message": "Error adding village",
             "Data": {
                 "Query": "INSERT",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+    
+@app.route('/get_stats', methods=['POST'])
+def get_stats():
+    try:
+        data = request.get_json()
+        if not data or 'Query' not in data or 'Data' not in data:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "STATS",
+                    "Result": []
+                },
+                "error": "Invalid request format"
+            }), 200
+
+        # Extract village info from request
+        village_id = data['Data'].get('village_id')
+        stat_type = data['Data'].get('stat_type', 'all')  # Default to all stats if not specified
+
+        # Base WHERE clause for village-specific queries
+        village_filter = f"WHERE v.id = {village_id}" if village_id else ""
+
+        stats_queries = {
+            "demographics": f"""
+                SELECT 
+                    v.name as village_name,
+                    COUNT(c.id) as total_population,
+                    COUNT(CASE WHEN c.gender = 'M' THEN 1 END) as male_population,
+                    COUNT(CASE WHEN c.gender = 'F' THEN 1 END) as female_population,
+                    COUNT(CASE WHEN c.gender = 'O' THEN 1 END) as other_population,
+                    COUNT(DISTINCT h.id) as total_households
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                LEFT JOIN households h ON c.household_id = h.id
+                {village_filter}
+                GROUP BY v.id, v.name
+            """,
+            "education": f"""
+                SELECT 
+                    v.name as village_name,
+                    educational_qualification,
+                    COUNT(*) as count,
+                    ROUND(COUNT()::decimal / SUM(COUNT()) OVER (PARTITION BY v.id) * 100, 2) as percentage
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                {village_filter}
+                GROUP BY v.id, v.name, educational_qualification
+                ORDER BY count DESC
+            """,
+            "age": f"""
+                SELECT 
+                    v.name as village_name,
+                    COUNT(CASE WHEN age < 18 THEN 1 END) as under_18,
+                    COUNT(CASE WHEN age BETWEEN 18 AND 30 THEN 1 END) as age_18_30,
+                    COUNT(CASE WHEN age BETWEEN 31 AND 50 THEN 1 END) as age_31_50,
+                    COUNT(CASE WHEN age > 50 THEN 1 END) as above_50
+                FROM village v
+                LEFT JOIN (
+                    SELECT *, DATE_PART('year', AGE(CURRENT_DATE, dob)) as age 
+                    FROM citizens
+                ) c ON v.id = c.village_id
+                {village_filter}
+                GROUP BY v.id, v.name
+            """,
+            "schemes": f"""
+                SELECT 
+                    v.name as village_name,
+                    s.name as scheme_name,
+                    COUNT(DISTINCT se.citizen_id) as enrolled_citizens
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                LEFT JOIN scheme_enrollment se ON c.id = se.citizen_id
+                LEFT JOIN schemes s ON se.scheme_id = s.id
+                {village_filter}
+                GROUP BY v.id, v.name, s.id, s.name
+                ORDER BY enrolled_citizens DESC
+            """,
+            "financial": f"""
+                SELECT 
+                    v.name as village_name,
+                    COUNT(DISTINCT tf.citizen_id) as tax_payers,
+                    ROUND(AVG(tf.amount)) as avg_tax_amount,
+                    COUNT(DISTINCT id.citizen_id) as income_declarants,
+                    ROUND(AVG(id.amount)) as avg_declared_income
+                FROM village v
+                LEFT JOIN citizens c ON v.id = c.village_id
+                LEFT JOIN tax_filing tf ON c.id = tf.citizen_id
+                LEFT JOIN income_declarations id ON c.id = id.citizen_id
+                {village_filter}
+                GROUP BY v.id, v.name
+            """
+        }
+
+        results = {}
+        cursor = conn.cursor()
+
+        if stat_type == 'all':
+            # Execute all queries
+            for stat_name, query in stats_queries.items():
+                cursor.execute(query)
+                columns = [desc[0] for desc in cursor.description]
+                query_results = cursor.fetchall()
+                results[stat_name] = [
+                    {columns[i]: value for i, value in enumerate(row)}
+                    for row in query_results
+                ]
+        elif stat_type in stats_queries:
+            # Execute specific query
+            cursor.execute(stats_queries[stat_type])
+            columns = [desc[0] for desc in cursor.description]
+            query_results = cursor.fetchall()
+            results[stat_type] = [
+                {columns[i]: value for i, value in enumerate(row)}
+                for row in query_results
+            ]
+        else:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid stat_type",
+                "Data": {
+                    "Query": "STATS",
+                    "Result": []
+                },
+                "error": "Invalid stat_type"
+            }), 200
+
+        cursor.close()
+
+        return jsonify({
+            "Status": "Success",
+            "Message": "Statistics retrieved successfully",
+            "Data": {
+                "Query": "STATS",
+                "Result": results
+            },
+            "error": None
+        }), 200
+
+    except Exception as e:
+        if 'cursor' in locals():
+            cursor.close()
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error retrieving statistics",
+            "Data": {
+                "Query": "STATS",
                 "Result": []
             },
             "error": str(e)

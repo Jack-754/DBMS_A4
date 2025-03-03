@@ -1,7 +1,7 @@
 # Run the Flask application....
 
-from DBMS import app
-from DBMS.functionals.connectdb import connect_to_database,execute_sql_file
+from backend import app
+from backend.functionals.connectdb import connect_to_database,execute_sql_file
 import psycopg2
 from dotenv import load_dotenv
 import os

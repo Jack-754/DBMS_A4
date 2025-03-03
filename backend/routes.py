@@ -628,9 +628,13 @@ def insert_record():
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'status_code': 500
+            "Status": "Failed",
+            "Message": str(e),
+            "Data": {
+                "Query": "INSERT",
+                "Result": []
+            },
+            "error": str(e)
         }), 500
     finally:
         if 'cursor' in locals():

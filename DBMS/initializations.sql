@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS certificates (
 CREATE TABLE IF NOT EXISTS assets (
     asset_id SERIAL PRIMARY KEY,
     asset_type VARCHAR(50) NOT NULL,
+    location VARCHAR(100),
     date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
@@ -171,6 +172,25 @@ CREATE TABLE IF NOT EXISTS vaccination (
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
 );
 
+CREATE TABLE census_data (
+    household_id INT NOT NULL,
+    citizen_id INT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_date DATE NOT NULL,
+    FOREIGN KEY (household_id) REFERENCES households (id),
+    FOREIGN KEY (citizen_id) REFERENCES citizens (id),
+    CHECK (event_type IN ('Birth', 'Death', 'Marriage', 'Divorce'))
+);
+
+CREATE TABLE land_records (
+    land_id SERIAL PRIMARY KEY,
+    citizen_id INT NOT NULL,
+    area_acres DECIMAL(10, 2) NOT NULL,
+    crop_type TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens (id),
+    CHECK (crop_type IN ('Rice', 'Wheat', 'Cotton', 'Sugarcane', 'Maize'))
+);
+
 -- Insert into village
 INSERT INTO village (name) VALUES ('Greenwood'), ('Sunnyvale'), ('Riverside');
 
@@ -215,10 +235,10 @@ VALUES
     ('Income Certificate', 1);
 
 -- Insert into assets
-INSERT INTO assets (asset_type)
+INSERT INTO assets (asset_type, location, date_of_registration)
 VALUES 
-    ('Land'),
-    ('Vehicle');
+    ('Land', 'North Greenwood', '2023-05-15'),
+    ('Vehicle', 'Sunnyvale Township', '2023-08-22');
 
 -- Insert into panchayat_employees
 INSERT INTO panchayat_employees (citizen_id, position, salary, village_id)
@@ -249,6 +269,20 @@ INSERT INTO vaccination (citizen_id, vaccine_type, date_administered)
 VALUES 
     (1, 'COVID-19', '2024-01-10'),
     (3, 'Polio', '2024-02-05');
+
+INSERT INTO census_data (household_id, citizen_id, event_type, event_date)
+VALUES
+    (1, 1, 'Marriage', '2020-06-12'),
+    (1, 2, 'Marriage', '2020-06-12'),
+    (2, 3, 'Birth', '2000-04-12'),
+    (3, 4, 'Divorce', '2018-11-03');
+
+INSERT INTO land_records (citizen_id, area_acres, crop_type)
+VALUES
+    (1, 5.75, 'Wheat'),
+    (2, 3.25, 'Rice'),
+    (4, 8.50, 'Cotton'),
+    (3, 2.10, 'Maize');
 
 
 -- -- USERS TABLE

@@ -191,98 +191,204 @@ CREATE TABLE land_records (
     CHECK (crop_type IN ('Rice', 'Wheat', 'Cotton', 'Sugarcane', 'Maize'))
 );
 
--- Insert into village
-INSERT INTO village (name) VALUES ('Greenwood'), ('Sunnyvale'), ('Riverside');
+-- Insert villages first (Independent table)
+INSERT INTO village (name) VALUES 
+    ('Greenwood'),
+    ('Sunnyvale'),
+    ('Riverside'),
+    ('Meadowbrook'),
+    ('Highland');
 
--- Insert into households
-INSERT INTO households (primary_residence) VALUES ('123 Main St'), ('456 Elm St'), ('789 Oak St');
+-- Insert households (Independent table)
+INSERT INTO households (primary_residence) VALUES 
+    ('123 Main St, Greenwood'),
+    ('456 Elm St, Greenwood'),
+    ('789 Oak St, Sunnyvale'),
+    ('321 Pine St, Riverside'),
+    ('654 Maple St, Meadowbrook'),
+    ('987 Cedar St, Highland'),
+    ('741 Birch St, Sunnyvale'),
+    ('852 Willow St, Riverside');
 
--- Insert into citizens
-INSERT INTO citizens (name, dob, gender, phone, household_id, educational_qualification, village_id) 
-VALUES 
-    ('John Doe', '1985-06-15', 'M', '9876543210', 1, 'Graduate', 1),
-    ('Jane Doe', '1990-09-25', 'F', '8765432109', 1, 'Post-Graduate', 1),
-    ('Alice Smith', '2000-04-12', 'F', '7654321098', 2, '12th', 2),
-    ('Bob Brown', '1975-12-05', 'M', '6543210987', 3, '10th', 3);
 
--- Set head_of_household
-UPDATE households SET head_of_household = 1 WHERE id = 1;
-UPDATE households SET head_of_household = 3 WHERE id = 2;
+-- Insert citizens
+INSERT INTO citizens (name, dob, gender, phone, household_id, educational_qualification, village_id) VALUES 
+    ('John Doe', '1980-06-15', 'M', '9876543210', 1, 'Graduate', 1),
+    ('Jane Doe', '1982-09-25', 'F', '8765432109', 1, 'Post-Graduate', 1),
+    ('Alice Smith', '1975-04-12', 'F', '7654321098', 2, '12th', 1),
+    ('Bob Brown', '1978-12-05', 'M', '6543210987', 2, '10th', 1),
+    ('Charlie Wilson', '1990-03-20', 'M', '5432109876', 3, 'Graduate', 2),
+    ('Diana Miller', '1988-07-30', 'F', '4321098765', 3, 'Post-Graduate', 2),
+    ('Edward Davis', '1995-11-08', 'M', '3210987654', 4, 'Graduate', 3),
+    ('Fiona Taylor', '1992-01-15', 'F', '2109876543', 4, '12th', 3),
+    ('George White', '1985-08-22', 'M', '1098765432', 5, 'Secondary', 4),
+    ('Helen Green', '1987-04-17', 'F', '9987654321', 5, 'Graduate', 4),
+    ('Ian Black', '1983-12-30', 'M', '8876543210', 6, '10th', 5),
+    ('Julia Grey', '1986-06-05', 'F', '7765432109', 6, 'Graduate', 5),
+    ('Kevin Lee', '1993-09-12', 'M', '6654321098', 7, 'Post-Graduate', 2),
+    ('Laura Chen', '1991-02-28', 'F', '5543210987', 7, 'Graduate', 2),
+    ('Michael Wong', '1989-07-14', 'M', '4432109876', 8, '12th', 3),
+    ('Nancy Park', '1994-11-19', 'F', '3321098765', 8, 'Graduate', 3),
+    ('Oliver Singh', '1981-03-25', 'M', '2210987654', 1, 'Post-Graduate', 1),
+    ('Patricia Kumar', '1984-08-09', 'F', '1109876543', 2, 'Graduate', 1),
+    ('Quinn Martinez', '1996-01-31', 'O', '9988776655', 3, '12th', 2),
+    ('Rachel Rodriguez', '1997-05-16', 'F', '8877665544', 4, 'Graduate', 3);
 
--- Insert into users
-INSERT INTO users (username, pswd, user_type, citizen_id)
-VALUES 
-    ('john_doe', 'hashedpassword1', 'CITIZEN', 1),
-    ('jane_doe', 'hashedpassword2', 'PANCHAYAT_EMPLOYEES', 2),
-    ('admin_user', 'hashedpassword3', 'SYSTEM_ADMINISTRATOR', NULL);
+-- Update households with head_of_household
+UPDATE households SET head_of_household = 1 WHERE id = 1;  -- John Doe
+UPDATE households SET head_of_household = 3 WHERE id = 2;  -- Alice Smith
+UPDATE households SET head_of_household = 5 WHERE id = 3;  -- Charlie Wilson
+UPDATE households SET head_of_household = 7 WHERE id = 4;  -- Edward Davis
+UPDATE households SET head_of_household = 9 WHERE id = 5;  -- George White
+UPDATE households SET head_of_household = 11 WHERE id = 6; -- Ian Black
+UPDATE households SET head_of_household = 13 WHERE id = 7; -- Kevin Lee
+UPDATE households SET head_of_household = 15 WHERE id = 8; -- Michael Wong
 
--- Insert into tax_filing
-INSERT INTO tax_filing (amount, citizen_id, filing_date)
-VALUES 
-    (5000, 1, '2024-05-10'),
-    (3000, 3, '2024-07-15');
+-- Insert users (10 users with different roles)
+INSERT INTO users (username, pswd, user_type, citizen_id) VALUES 
+    ('john_doe', 'hashed_password_1', 'CITIZEN', 1),
+    ('jane_doe', 'hashed_password_2', 'PANCHAYAT_EMPLOYEES', 2),
+    ('alice_smith', 'hashed_password_3', 'GOVERNMENT_MONITOR', 3),
+    ('charlie_wilson', 'hashed_password_4', 'CITIZEN', 5),
+    ('diana_miller', 'hashed_password_5', 'PANCHAYAT_EMPLOYEES', 6),
+    ('edward_davis', 'hashed_password_6', 'CITIZEN', 7),
+    ('helen_green', 'hashed_password_7', 'GOVERNMENT_MONITOR', 10),
+    ('kevin_lee', 'hashed_password_8', 'CITIZEN', 13),
+    ('laura_chen', 'hashed_password_9', 'PANCHAYAT_EMPLOYEES', 14),
+    ('admin_user', 'hashed_password_10', 'SYSTEM_ADMINISTRATOR', NULL);
 
--- Insert into income_declarations
-INSERT INTO income_declarations (amount, citizen_id, source, filing_date)
-VALUES 
-    (40000, 1, 'Salary', '2024-06-01'),
-    (25000, 2, 'Freelance', '2024-06-05');
+-- Insert some panchayat employees (one PRADHAN per village)
+INSERT INTO panchayat_employees (citizen_id, position, salary, village_id) VALUES 
+    (2, 'PRADHAN', 50000, 1),    -- Jane Doe for Greenwood
+    (6, 'PRADHAN', 50000, 2),    -- Diana Miller for Sunnyvale
+    (14, 'PRADHAN', 50000, 3),   -- Laura Chen for Riverside
+    (10, 'MEMBER', 30000, 1),    -- Helen Green as member
+    (18, 'MEMBER', 30000, 2);    -- Patricia Kumar as member
 
--- Insert into certificates
-INSERT INTO certificates (cert_type, citizen_issued)
-VALUES 
+-- Insert vaccinations (multiple vaccines per citizen)
+INSERT INTO vaccination (citizen_id, vaccine_type, date_administered) VALUES 
+    (1, 'COVID-19', '2023-01-10'),
+    (1, 'Flu', '2023-09-15'),
+    (2, 'COVID-19', '2023-01-12'),
+    (3, 'COVID-19', '2023-01-15'),
+    (3, 'Tetanus', '2023-06-20'),
+    (4, 'COVID-19', '2023-02-01'),
+    (5, 'COVID-19', '2023-02-05'),
+    (5, 'Hepatitis B', '2023-07-10'),
+    (6, 'COVID-19', '2023-02-10'),
+    (7, 'COVID-19', '2023-02-15'),
+    (8, 'COVID-19', '2023-03-01'),
+    (8, 'Flu', '2023-09-20'),
+    (9, 'COVID-19', '2023-03-05'),
+    (10, 'COVID-19', '2023-03-10'),
+    (11, 'COVID-19', '2023-03-15'),
+    (12, 'COVID-19', '2023-04-01'),
+    (13, 'COVID-19', '2023-04-05'),
+    (14, 'COVID-19', '2023-04-10'),
+    (15, 'COVID-19', '2023-04-15'),
+    (16, 'COVID-19', '2023-05-01'),
+    (17, 'COVID-19', '2023-05-05'),
+    (18, 'COVID-19', '2023-05-10'),
+    (19, 'COVID-19', '2023-05-15'),
+    (20, 'COVID-19', '2023-06-01');
+
+-- Insert tax filings
+INSERT INTO tax_filing (amount, citizen_id, filing_date) VALUES 
+    (25000, 1, '2023-06-15'),
+    (30000, 2, '2023-07-10'),
+    (20000, 3, '2023-06-20'),
+    (15000, 5, '2023-08-05'),
+    (35000, 6, '2023-07-15'),
+    (28000, 7, '2023-06-25'),
+    (22000, 10, '2023-07-20'),
+    (40000, 13, '2023-08-10'),
+    (32000, 14, '2023-07-25'),
+    (18000, 17, '2023-08-15');
+
+-- Insert income declarations
+INSERT INTO income_declarations (amount, citizen_id, source, filing_date) VALUES 
+    (300000, 1, 'Salary', '2023-04-10'),
+    (450000, 2, 'Business', '2023-04-15'),
+    (250000, 3, 'Rental', '2023-04-20'),
+    (200000, 5, 'Salary', '2023-05-01'),
+    (550000, 6, 'Business', '2023-05-05'),
+    (350000, 7, 'Salary', '2023-05-10'),
+    (400000, 10, 'Rental', '2023-05-15'),
+    (600000, 13, 'Business', '2023-06-01'),
+    (480000, 14, 'Salary', '2023-06-05'),
+    (280000, 17, 'Rental', '2023-06-10');
+
+-- Insert certificates
+INSERT INTO certificates (cert_type, citizen_issued) VALUES 
+    ('Birth Certificate', 1),
+    ('Income Certificate', 1),
+    ('Residence Certificate', 2),
     ('Birth Certificate', 3),
-    ('Income Certificate', 1);
+    ('Income Certificate', 5),
+    ('Caste Certificate', 6),
+    ('Birth Certificate', 7),
+    ('Marriage Certificate', 8),
+    ('Income Certificate', 10),
+    ('Residence Certificate', 13),
+    ('Birth Certificate', 14),
+    ('Income Certificate', 17),
+    ('Marriage Certificate', 18),
+    ('Residence Certificate', 19),
+    ('Birth Certificate', 20);
 
--- Insert into assets
-INSERT INTO assets (asset_type, location, date_of_registration)
-VALUES 
-    ('Land', 'North Greenwood', '2023-05-15'),
-    ('Vehicle', 'Sunnyvale Township', '2023-08-22');
 
--- Insert into panchayat_employees
-INSERT INTO panchayat_employees (citizen_id, position, salary, village_id)
-VALUES 
-    (2, 'PRADHAN', 50000, 1),
-    (4, 'MEMBER', 30000, 3);
+-- Insert assets
+INSERT INTO assets (asset_type, location, date_of_registration) VALUES 
+    ('Land', 'North Greenwood Plot 12', '2022-01-15'),
+    ('House', '123 Main St, Greenwood', '2022-03-20'),
+    ('Vehicle', 'Registered in Greenwood DMV', '2022-05-10'),
+    ('Land', 'South Greenwood Plot 7', '2022-02-25'),
+    ('House', '456 Elm St, Sunnyvale', '2022-04-15'),
+    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-06-20'),
+    ('Land', 'Riverside Agricultural Zone', '2022-07-10'),
+    ('House', '654 Maple St, Meadowbrook', '2022-08-05'),
+    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-09-15'),
+    ('Land', 'Highland Hilltop Area', '2022-10-20'),
+    ('House', '987 Cedar St, Highland', '2022-11-25'),
+    ('Vehicle', 'Registered in Riverside DMV', '2022-12-30');
 
--- Insert into schemes
-INSERT INTO schemes (name, description)
-VALUES 
-    ('Housing Assistance', 'Provides financial aid for home construction'),
-    ('Education Scholarship', 'Supports students with tuition fees');
+-- Insert schemes
+INSERT INTO schemes (name, description) VALUES 
+    ('PM Awas Yojana', 'Housing scheme for rural areas'),
+    ('Skill Development Program', 'Vocational training for youth'),
+    ('Agricultural Subsidy Scheme', 'Support for farmers'),
+    ('Education Scholarship', 'Financial aid for students'),
+    ('Healthcare Support', 'Medical assistance for elderly'),
+    ('Women Empowerment Initiative', 'Support for women entrepreneurs');
 
--- Insert into scheme_enrollment
-INSERT INTO scheme_enrollment (citizen_id, scheme_id, enrollment_date)
-VALUES 
-    (1, 1, '2024-04-10'),
-    (3, 2, '2024-05-20');
+-- Insert scheme enrollments
+INSERT INTO scheme_enrollment (citizen_id, scheme_id, enrollment_date) VALUES 
+    (1, 1, '2023-04-10'),
+    (2, 2, '2023-04-15'),
+    (3, 3, '2023-05-20'),
+    (5, 4, '2023-06-25'),
+    (6, 5, '2023-07-30'),
+    (7, 6, '2023-08-05'),
+    (10, 1, '2023-09-10'),
+    (13, 2, '2023-10-15'),
+    (14, 3, '2023-11-20'),
+    (17, 4, '2023-12-25'),
+    (18, 5, '2024-01-30'),
+    (19, 6, '2024-02-05'),
+    (20, 1, '2024-03-10');
 
--- Insert into expenditure
-INSERT INTO expenditure (category, amount, date_spent)
-VALUES 
-    ('Road Repair', 100000, '2024-03-15'),
-    ('Water Supply', 50000, '2024-02-28');
-
--- Insert into vaccination
-INSERT INTO vaccination (citizen_id, vaccine_type, date_administered)
-VALUES 
-    (1, 'COVID-19', '2024-01-10'),
-    (3, 'Polio', '2024-02-05');
-
-INSERT INTO census_data (household_id, citizen_id, event_type, event_date)
-VALUES
-    (1, 1, 'Marriage', '2020-06-12'),
-    (1, 2, 'Marriage', '2020-06-12'),
-    (2, 3, 'Birth', '2000-04-12'),
-    (3, 4, 'Divorce', '2018-11-03');
-
-INSERT INTO land_records (citizen_id, area_acres, crop_type)
-VALUES
-    (1, 5.75, 'Wheat'),
-    (2, 3.25, 'Rice'),
-    (4, 8.50, 'Cotton'),
-    (3, 2.10, 'Maize');
+-- Insert expenditure records
+INSERT INTO expenditure (category, amount, date_spent) VALUES 
+    ('Road Construction', 500000, '2023-04-15'),
+    ('Street Lighting', 150000, '2023-05-20'),
+    ('Water Supply', 300000, '2023-06-25'),
+    ('Sanitation', 200000, '2023-07-30'),
+    ('Public Park Maintenance', 100000, '2023-08-05'),
+    ('School Infrastructure', 400000, '2023-09-10'),
+    ('Healthcare Center', 350000, '2023-10-15'),
+    ('Waste Management', 250000, '2023-11-20'),
+    ('Community Hall Renovation', 450000, '2023-12-25'),
+    ('Emergency Services', 180000, '2024-01-30');
 
 
 -- -- USERS TABLE

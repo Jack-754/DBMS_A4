@@ -1730,3 +1730,455 @@ def admin_add_scheme():
             },
             "error": str(e)
         }), 500
+
+app.route('/panchayat_employee/census_data', methods=['GET'])
+@jwt_required()
+def get_census_data():
+    try:
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT c.citizen_id, ci.name, c.event_type, c.event_date 
+            FROM census_data c
+            JOIN citizens ci ON c.citizen_id = ci.id
+            ORDER BY c.event_date DESC
+        """)
+        
+        census_records = cur.fetchall()
+        
+        # Convert to list of dictionaries for JSON response
+        census_data = []
+        for record in census_records:
+            census_data.append({
+                'citizen_id': record[0],
+                'citizen_name': record[1],
+                'event_type': record[2],
+                'event_date': record[3].strftime('%Y-%m-%d')
+            })
+        
+        cur.close()
+        
+        return jsonify({
+            "Status": "Success",
+            "Message": "Census data retrieved successfully",
+            "Data": {
+                "Query": "SELECT",
+                "Result": [census_data]
+            },
+            "error": None
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            "Status": "Failed",
+            "Message": "An unexpected error occurred",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+
+@app.route('/panchayat_employee/census_data/add', methods=['POST'])
+@jwt_required()
+def add_census_record():
+    try:
+        data = request.get_json()
+        
+        # Validate request format
+        if not data or 'Query' not in data or data['Query'] != 'INSERT' or 'Data' not in data:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "INSERT",
+                    "Result": []
+                },
+                "error": "Invalid request format"
+            }), 400
+
+        request_data = data['Data']
+        # Validate required fields
+        required_fields = ['citizen_id', 'event_type', 'event_date']
+        if not all(field in request_data for field in required_fields):
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Missing required fields",
+                "Data": {
+                    "Query": "INSERT",
+                    "Result": []
+                },
+                "error": "Missing required fields"
+            }), 400
+        
+        # Validate event_type
+        valid_event_types = ['Birth', 'Death', 'Marriage', 'Divorce']
+        if request_data['event_type'] not in valid_event_types:
+            return jsonify({
+                "Status": "Failed",
+                "Message": f"Invalid event type. Must be one of: {', '.join(valid_event_types)}",
+                "Data": {
+                    "Query": "INSERT",
+                    "Result": []
+                },
+                "error": "Invalid event type"
+            }), 400
+        
+        # Check if citizen exists
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM citizens WHERE id = %s", (request_data['citizen_id'],))
+            if not cur.fetchone():
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": "Citizen ID does not exist",
+                    "Data": {
+                        "Query": "INSERT",
+                        "Result": []
+                    },
+                    "error": "Citizen not found"
+                }), 404
+            
+            # Insert new census record
+            cur.execute("""
+                INSERT INTO census_data (citizen_id, event_type, event_date)
+                VALUES (%s, %s, %s)
+                RETURNING citizen_id, event_type, event_date
+            """, (request_data['citizen_id'], request_data['event_type'], request_data['event_date']))
+            
+            new_record = cur.fetchone()
+            conn.commit()
+            
+            return jsonify({
+                "Status": "Success",
+                "Message": "Census record added successfully",
+                "Data": {
+                    "Query": "INSERT",
+                    "Result": [{
+                        "citizen_id": new_record[0],
+                        "event_type": new_record[1],
+                        "event_date": new_record[2].strftime('%Y-%m-%d')
+                    }]
+                },
+                "error": None
+            }), 201
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error adding census record",
+            "Data": {
+                "Query": "INSERT",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+
+@app.route('/panchayat_employee/census_data/delete', methods=['POST'])
+@jwt_required()
+def delete_census_record():
+    try:
+        data = request.get_json()
+        
+        # Validate request format
+        if not data or 'Query' not in data or data['Query'] != 'DELETE' or 'Data' not in data:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": []
+                },
+                "error": "Invalid request format"
+            }), 400
+
+        request_data = data['Data']
+        # Validate required fields
+        if not request_data or "citizen_id" not in request_data or "event_date" not in request_data or "event_type" not in request_data: 
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Missing required fields: citizen_id and event_date and event_type",
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": []
+                },
+                "error": "Missing required fields"
+            }), 400
+        
+        with conn.cursor() as cur:
+            # First check if the record exists and get its details
+            cur.execute("""
+                SELECT c.citizen_id, ci.name, c.event_type, c.event_date 
+                FROM census_data c
+                JOIN citizens ci ON c.citizen_id = ci.id
+                WHERE c.citizen_id = %s AND c.event_date::text = %s AND c.event_type = %s
+            """, (request_data['citizen_id'], request_data['event_date'], request_data['event_type']))
+            
+            record = cur.fetchone()
+            if not record:
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": "Census record not found",
+                    "Data": {
+                        "Query": "DELETE",
+                        "Result": []
+                    },
+                    "error": "Record not found"
+                }), 404
+            
+            # Store record details for response
+            deleted_record = {
+                "citizen_id": record[0],
+                "citizen_name": record[1],
+                "event_type": record[2],
+                "event_date": record[3].strftime('%Y-%m-%d')
+            }
+            
+            # Delete the record
+            cur.execute("""
+                DELETE FROM census_data 
+                WHERE citizen_id = %s AND event_date::text = %s AND event_type = %s
+            """, (request_data['citizen_id'], request_data['event_date'], request_data['event_type']))
+            
+            conn.commit()
+            
+            return jsonify({
+                "Status": "Success",
+                "Message": "Census record deleted successfully",
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": [deleted_record]
+                },
+                "error": None
+            }), 200
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error deleting census record",
+            "Data": {
+                "Query": "DELETE",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+    
+
+def get_citizen_land_records(citizen_id):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT lr.land_id, lr.citizen_id, lr.area_acres,lr.crop_type, v.name as village_name
+        FROM land_records lr
+        JOIN village v ON lr.village_id = v.id
+        WHERE lr.citizen_id = %s
+        ORDER BY lr.registration_date DESC""", (citizen_id,))
+    records = cursor.fetchall()
+    cursor.close()
+    
+    if records:
+        return [{
+            'land_id': record[0],
+            'citizen_id': record[1],
+            'area_acres': float(record[2]),
+            'crop_type': record[3],
+            'village_name': record[4]
+        } for record in records]
+    return []
+
+@app.route('/citizen/land_records', methods=['POST'])
+@jwt_required()
+def citizen_land_records():
+    try:
+        user_id = current_user.id
+        
+        # First get the citizen_id from users table
+        with conn.cursor() as cur:
+            cur.execute("SELECT citizen_id FROM users WHERE id = %s", (user_id,))
+            result = cur.fetchone()
+            if not result or not result[0]:
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": "No citizen ID associated with user",
+                    "Data": {
+                        "Query": "SELECT",
+                        "Result": []
+                    },
+                    "error": "Citizen ID not found"
+                }), 404
+            
+            citizen_id = result[0]
+            land_records = get_citizen_land_records(citizen_id)
+            
+            if land_records:
+                return jsonify({
+                    "Status": "Success",
+                    "Message": "Land records retrieved successfully",
+                    "Data": {
+                        "Query": "SELECT",
+                        "Result": land_records
+                    },
+                    "error": None
+                }), 200
+            else:
+                return jsonify({
+                    "Status": "Success",
+                    "Message": "No land records found",
+                    "Data": {
+                        "Query": "SELECT",
+                        "Result": []
+                    },
+                    "error": None
+                }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error retrieving land records",
+            "Data": {
+                "Query": "SELECT",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+    
+@app.route('/panchayat_employee/land_records/update', methods=['POST'])
+@jwt_required()
+def update_land_record():
+    try:
+        data = request.get_json()
+        
+        # Validate request format
+        if not data or 'Query' not in data or data['Query'] != 'UPDATE' or 'Data' not in data:
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Invalid request format",
+                "Data": {
+                    "Query": "UPDATE",
+                    "Result": []
+                },
+                "error": "Invalid request format"
+            }), 400
+
+        request_data = data['Data']
+        # Validate required fields
+        required_fields = ['land_id', 'updates']
+        if not all(field in request_data for field in required_fields):
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Missing required fields: land_id and updates",
+                "Data": {
+                    "Query": "UPDATE",
+                    "Result": []
+                },
+                "error": "Missing required fields"
+            }), 400
+
+        # Validate that user is a panchayat employee
+        if not current_user.user_type == 'PANCHAYAT_EMPLOYEES':
+            return jsonify({
+                "Status": "Failed",
+                "Message": "Unauthorized access. Only panchayat employees can update land records",
+                "Data": {
+                    "Query": "UPDATE",
+                    "Result": []
+                },
+                "error": "Unauthorized access"
+            }), 403
+
+        land_id = request_data['land_id']
+        updates = request_data['updates']
+
+        # Validate updatable fields
+        allowed_fields = {'area_acres', 'crop_type'}
+        invalid_fields = set(updates.keys()) - allowed_fields
+        if invalid_fields:
+            return jsonify({
+                "Status": "Failed",
+                "Message": f"Invalid fields for update: {', '.join(invalid_fields)}",
+                "Data": {
+                    "Query": "UPDATE",
+                    "Result": []
+                },
+                "error": "Invalid fields"
+            }), 400
+
+        with conn.cursor() as cur:
+            # First check if record exists
+            cur.execute("""
+                SELECT lr.*, v.name as village_name
+                FROM land_records lr
+                JOIN village v ON lr.village_id = v.id
+                WHERE lr.land_id = %s
+            """, (land_id,))
+            
+            existing_record = cur.fetchone()
+            if not existing_record:
+                return jsonify({
+                    "Status": "Failed",
+                    "Message": f"Land record with ID {land_id} not found",
+                    "Data": {
+                        "Query": "UPDATE",
+                        "Result": []
+                    },
+                    "error": "Record not found"
+                }), 404
+
+            # Construct UPDATE query
+            update_fields = []
+            update_values = []
+            for field, value in updates.items():
+                update_fields.append(f"{field} = %s")
+                update_values.append(value)
+            
+            # Add land_id to values
+            update_values.append(land_id)
+            
+            update_query = f"""
+                UPDATE land_records 
+                SET {', '.join(update_fields)}
+                WHERE land_id = %s
+                RETURNING land_id, citizen_id, area_acres, crop_type, village_id
+            """
+            
+            cur.execute(update_query, update_values)
+            updated_record = cur.fetchone()
+            
+            # Get village name for the updated record
+            cur.execute("SELECT name FROM village WHERE id = %s", (updated_record[4],))
+            village_name = cur.fetchone()[0]
+            
+            conn.commit()
+            
+            # Format the response
+            formatted_record = {
+                "land_id": updated_record[0],
+                "citizen_id": updated_record[1],
+                "area_acres": float(updated_record[2]),
+                "crop_type": updated_record[3],
+                "village_name": village_name
+            }
+            
+            return jsonify({
+                "Status": "Success",
+                "Message": "Land record updated successfully",
+                "Data": {
+                    "Query": "UPDATE",
+                    "Result": [formatted_record]
+                },
+                "error": None
+            }), 200
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({
+            "Status": "Failed",
+            "Message": "Error updating land record",
+            "Data": {
+                "Query": "UPDATE",
+                "Result": []
+            },
+            "error": str(e)
+        }), 500
+
+	

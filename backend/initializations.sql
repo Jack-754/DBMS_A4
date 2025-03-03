@@ -107,10 +107,9 @@ CREATE TABLE IF NOT EXISTS certificates (
 CREATE TABLE IF NOT EXISTS assets (
     asset_id SERIAL PRIMARY KEY,
     asset_type VARCHAR(50) NOT NULL,
-    location VARCHAR(100),
+    location INT,
     date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE,
-    village_id INT NOT NULL,
-    FOREIGN KEY (village_id) REFERENCES village(id) ON DELETE CASCADE
+    FOREIGN KEY (location) REFERENCES village(id) ON DELETE CASCADE
 );
 
 -- PANCHAYAT EMPLOYEES TABLE (Depends on CITIZENS and VILLAGE)
@@ -190,6 +189,41 @@ CREATE TABLE land_records (
     FOREIGN KEY (citizen_id) REFERENCES citizens (id),
     CHECK (crop_type IN ('Rice', 'Wheat', 'Cotton', 'Sugarcane', 'Maize'))
 );
+
+-- Create trigger function to handle panchayat employee changes
+CREATE OR REPLACE FUNCTION manage_panchayat_employees()
+RETURNS TRIGGER AS $$
+DECLARE
+    user_village_id INT;
+BEGIN
+    -- If user changed from non-panchayat to panchayat employee
+    IF OLD.user_type != 'PANCHAYAT_EMPLOYEES' AND NEW.user_type = 'PANCHAYAT_EMPLOYEES' THEN
+        -- Get the village_id from citizens table
+        SELECT village_id INTO user_village_id 
+        FROM citizens 
+        WHERE id = NEW.citizen_id;
+        
+        -- Insert new record into panchayat_employees
+        INSERT INTO panchayat_employees (citizen_id, position, salary, village_id)
+        VALUES (NEW.citizen_id, 'MEMBER', 30000, user_village_id);
+        
+    -- If user changed from panchayat to non-panchayat employee
+    ELSIF OLD.user_type = 'PANCHAYAT_EMPLOYEES' AND NEW.user_type != 'PANCHAYAT_EMPLOYEES' THEN
+        -- Delete the record from panchayat_employees
+        DELETE FROM panchayat_employees 
+        WHERE citizen_id = NEW.citizen_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create the trigger on users table
+CREATE TRIGGER user_panchayat_employee_changes
+AFTER UPDATE OF user_type ON users
+FOR EACH ROW
+WHEN (OLD.user_type IS DISTINCT FROM NEW.user_type)
+EXECUTE FUNCTION manage_panchayat_employees();
 
 -- Insert villages first (Independent table)
 INSERT INTO village (name) VALUES 
@@ -337,20 +371,24 @@ INSERT INTO certificates (cert_type, citizen_issued) VALUES
 
 -- Insert assets
 
-INSERT INTO assets (asset_type, location, date_of_registration, village_id) VALUES 
-    ('Land', 'North Greenwood Plot 12', '2022-01-15', 1),
-    ('House', '123 Main St, Greenwood', '2022-03-20', 1),
-    ('Vehicle', 'Registered in Greenwood DMV', '2022-05-10', 1),
-    ('Land', 'South Greenwood Plot 7', '2022-02-25', 1),
-    ('House', '456 Elm St, Sunnyvale', '2022-04-15', 2),
-    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-06-20', 2),
-    ('Land', 'Riverside Agricultural Zone', '2022-07-10', 3),
-    ('House', '654 Maple St, Meadowbrook', '2022-08-05', 4),
-    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-09-15', 2),
-    ('Land', 'Highland Hilltop Area', '2022-10-20', 5),
-    ('House', '987 Cedar St, Highland', '2022-11-25', 5),
-    ('Vehicle', 'Registered in Riverside DMV', '2022-12-30', 3);
-    
+-- Update assets entries with community infrastructure types
+INSERT INTO assets (asset_type, location, date_of_registration) VALUES 
+    ('STREET_LIGHT', 1, '2022-01-15'),          -- Greenwood
+    ('COMMUNITY_PARK', 1, '2022-03-20'),        -- Greenwood
+    ('WATER_TANK', 1, '2022-05-10'),            -- Greenwood
+    ('PRIMARY_SCHOOL', 2, '2022-02-25'),        -- Sunnyvale
+    ('COMMUNITY_HALL', 2, '2022-04-15'),        -- Sunnyvale
+    ('HEALTH_CENTER', 2, '2022-06-20'),         -- Sunnyvale
+    ('PUBLIC_LIBRARY', 3, '2022-07-10'),        -- Riverside
+    ('PLAYGROUND', 3, '2022-08-05'),            -- Riverside
+    ('WASTE_FACILITY', 3, '2022-09-15'),        -- Riverside
+    ('COMMUNITY_CENTER', 4, '2022-10-20'),      -- Meadowbrook
+    ('SPORTS_GROUND', 4, '2022-11-25'),         -- Meadowbrook
+    ('DRAINAGE_SYSTEM', 5, '2022-12-30'),       -- Highland
+    ('BUS_SHELTER', 5, '2023-01-15'),           -- Highland
+    ('TEMPLE', 1, '2023-02-20'),                -- Greenwood
+    ('MARKET_COMPLEX', 2, '2023-03-25');
+
 -- Insert schemes
 INSERT INTO schemes (name, description) VALUES 
     ('PM Awas Yojana', 'Housing scheme for rural areas'),

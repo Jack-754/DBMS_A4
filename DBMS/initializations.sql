@@ -173,11 +173,9 @@ CREATE TABLE IF NOT EXISTS vaccination (
 );
 
 CREATE TABLE census_data (
-    household_id INT NOT NULL,
     citizen_id INT NOT NULL,
     event_type TEXT NOT NULL,
     event_date DATE NOT NULL,
-    FOREIGN KEY (household_id) REFERENCES households (id),
     FOREIGN KEY (citizen_id) REFERENCES citizens (id),
     CHECK (event_type IN ('Birth', 'Death', 'Marriage', 'Divorce'))
 );

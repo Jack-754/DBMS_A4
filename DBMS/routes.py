@@ -50,7 +50,7 @@ def login():
                     "Result": [{
                         "userId": user.id,
                         "username": user.username,
-                        "type": user.type
+                        "type": user.user_type
                     }]
                 },
                 "error": None
@@ -190,28 +190,20 @@ def register():
         return jsonify(response), 500
 
 def get_citizen_profile(citizen_id):
-    conn = psycopg2.connect(
-        dbname="localhost",
-        user="postgress",
-        password="postgress",
-        host="postgress",
-        port="5432"
-    )
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, dob, age, gender, phone, household_id, educational_id, village_id FROM citizens WHERE id=%s", (citizen_id,))
+    cursor.execute("SELECT id, name, dob, gender, phone, household_id, educational_qualification, village_id FROM citizens WHERE id=%s", (citizen_id,))
     profile = cursor.fetchone()
-    conn.close()
+    cursor.close()
     if profile:
         return {
             'id': profile[0],
             'name': profile[1],
-            'dob': profile[2],
-            'age': profile[3],
-            'gender': profile[4],
-            'phone': profile[5],
-            'household_id': profile[6],
-            'educational_id': profile[7],
-            'village_id': profile[8]
+            'dob': profile[2].strftime('%Y-%m-%d') if profile[2] else None,
+            'gender': profile[3],
+            'phone': profile[4],
+            'household_id': profile[5],
+            'educational_qualification': profile[6],
+            'village_id': profile[7]
         }
     else:
         return None
@@ -246,61 +238,6 @@ def citizen_profile():
         return jsonify({
             "Status": "Failed",
             "Message": "Error fetching profile",
-            "Data": {
-                "Query": "SELECT",
-                "Result": []
-            },
-            "error": str(e)
-        }), 500
-
-
-def get_citizen_assets(owner_id):
-    cursor = conn.cursor()
-    cursor.execute("SELECT , asset_id, a_type, date_of_registration FROM assets WHERE owner_id=%s", (owner_id,))
-    assets = cursor.fetchall()
-    cursor.close()
-    
-    if assets:
-        return [{
-            'id': asset[0],
-            'citizen_id': asset[1],
-            'asset_type': asset[2],
-            'quantity': asset[3],
-            'value': asset[4],
-            'purchase_date': asset[5]
-        } for asset in assets]
-    return []
-
-@app.route('/citizen/assets', methods=['POST'])
-@login_required
-def citizen_assets():
-    try:
-        user_id = current_user.id
-        assets = get_citizen_assets(user_id)
-        if assets:
-            return jsonify({
-                "Status": "Success",
-                "Message": "Assets fetched successfully",
-                "Data": {
-                    "Query": "SELECT",
-                    "Result": assets
-                },
-                "error": None
-            }), 200
-        else:
-            return jsonify({
-                "Status": "Failed",
-                "Message": "No assets with user found",
-                "Data": {
-                    "Query": "SELECT",
-                    "Result": []
-                },
-                "error": "Not found"
-            }), 404
-    except Exception as e:
-        return jsonify({
-            "Status": "Failed",
-            "Message": "Error fetching assets",
             "Data": {
                 "Query": "SELECT",
                 "Result": []
@@ -346,7 +283,7 @@ def citizen_tax_filings():
 def get_citizen_certificates(citizen_id):
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT certificate_no, type, issue_date
+        SELECT certificate_no, cert_type, issue_date
         FROM certificates 
         WHERE citizen_issued=%s
         ORDER BY issue_date DESC""", (citizen_id,))
@@ -702,7 +639,7 @@ def admin_required(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or current_user.type != 'SYSTEM_ADMINISTRATOR':
+        if not current_user.is_authenticated or current_user.user_type != 'SYSTEM_ADMINISTRATOR':
             return jsonify({
                 "Status": "Failed",
                 "Message": "Admin access required",
@@ -721,7 +658,7 @@ def admin_get_users():
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, username, type, citizen_id 
+                SELECT id, username, user_type, citizen_id 
                 FROM users 
                 ORDER BY id
             """)
@@ -868,7 +805,7 @@ def admin_update_user_type():
         with conn.cursor() as cur:
             # Check if user exists and get citizen_id
             cur.execute("""
-                SELECT u.id, u.citizen_id, u.type, c.village_id 
+                SELECT u.id, u.citizen_id, u.user_type, c.village_id 
                 FROM users u
                 LEFT JOIN citizens c ON u.citizen_id = c.id
                 WHERE u.id = %s
@@ -988,7 +925,7 @@ def admin_update_user_type():
                 cur.execute("DELETE FROM panchayat_employees WHERE citizen_id = %s", (citizen_id,))
             
             # Update user type
-            cur.execute("UPDATE users SET type = %s WHERE id = %s", (new_type, user_id))
+            cur.execute("UPDATE users SET user_type = %s WHERE id = %s", (new_type, user_id))
             conn.commit()
                 
         return jsonify({

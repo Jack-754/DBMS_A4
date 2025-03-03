@@ -107,8 +107,9 @@ CREATE TABLE IF NOT EXISTS certificates (
 CREATE TABLE IF NOT EXISTS assets (
     asset_id SERIAL PRIMARY KEY,
     asset_type VARCHAR(50) NOT NULL,
-    location VARCHAR(100),
-    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE
+    location INT,
+    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE,
+    FOREIGN KEY (location) REFERENCES village(id) ON DELETE CASCADE
 );
 
 -- PANCHAYAT EMPLOYEES TABLE (Depends on CITIZENS and VILLAGE)
@@ -335,19 +336,23 @@ INSERT INTO certificates (cert_type, citizen_issued) VALUES
 
 -- Insert assets
 
+-- Update assets entries with community infrastructure types
 INSERT INTO assets (asset_type, location, date_of_registration) VALUES 
-    ('Land', 'North Greenwood Plot 12', '2022-01-15'),
-    ('House', '123 Main St, Greenwood', '2022-03-20'),
-    ('Vehicle', 'Registered in Greenwood DMV', '2022-05-10'),
-    ('Land', 'South Greenwood Plot 7', '2022-02-25'),
-    ('House', '456 Elm St, Sunnyvale', '2022-04-15'),
-    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-06-20'),
-    ('Land', 'Riverside Agricultural Zone', '2022-07-10'),
-    ('House', '654 Maple St, Meadowbrook', '2022-08-05'),
-    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-09-15'),
-    ('Land', 'Highland Hilltop Area', '2022-10-20'),
-    ('House', '987 Cedar St, Highland', '2022-11-25'),
-    ('Vehicle', 'Registered in Riverside DMV', '2022-12-30');
+    ('STREET_LIGHT', 1, '2022-01-15'),          -- Greenwood
+    ('COMMUNITY_PARK', 1, '2022-03-20'),        -- Greenwood
+    ('WATER_TANK', 1, '2022-05-10'),            -- Greenwood
+    ('PRIMARY_SCHOOL', 2, '2022-02-25'),        -- Sunnyvale
+    ('COMMUNITY_HALL', 2, '2022-04-15'),        -- Sunnyvale
+    ('HEALTH_CENTER', 2, '2022-06-20'),         -- Sunnyvale
+    ('PUBLIC_LIBRARY', 3, '2022-07-10'),        -- Riverside
+    ('PLAYGROUND', 3, '2022-08-05'),            -- Riverside
+    ('WASTE_FACILITY', 3, '2022-09-15'),        -- Riverside
+    ('COMMUNITY_CENTER', 4, '2022-10-20'),      -- Meadowbrook
+    ('SPORTS_GROUND', 4, '2022-11-25'),         -- Meadowbrook
+    ('DRAINAGE_SYSTEM', 5, '2022-12-30'),       -- Highland
+    ('BUS_SHELTER', 5, '2023-01-15'),           -- Highland
+    ('TEMPLE', 1, '2023-02-20'),                -- Greenwood
+    ('MARKET_COMPLEX', 2, '2023-03-25');
 
 -- Insert schemes
 INSERT INTO schemes (name, description) VALUES 

@@ -46,6 +46,7 @@ def login():
         # Modify the User.authenticate method according to your needs
         user = User.authenticate(data['Data']['username'], data['Data']['password'])
         if user:
+            login_user(user)
             access_token = create_access_token(identity=user.id)
             return jsonify({
                 "Status": "Success",

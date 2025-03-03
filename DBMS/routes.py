@@ -558,9 +558,13 @@ def insert_record():
         # Validate required fields
         if not all(key in data for key in ['table_name', 'values']):
             return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields',
-                'status_code': 200
+                'Status': 'error',
+                'Message': 'Missing required fields',
+                "Data": {
+                    "Query": "INSERT",
+                    "Result": []
+                },
+                "error": "Missing required fields"  
             }), 200
 
         table_name = data['table_name']
@@ -576,17 +580,25 @@ def insert_record():
         conn.commit()
 
         return jsonify({
-            'status': 'success',
-            'message': 'Record inserted successfully',
-            'status_code': 200
+            'Status': 'success',
+            'Message': 'Record inserted successfully',
+            "Data": {
+                "Query": "INSERT",
+                "Result": []
+            },
+            "error": None
         }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'status_code': 500
+            'Status': 'error',
+            'Message': 'Error inserting record',
+            "Data": {
+                "Query": "INSERT",
+                "Result": []
+            },
+            "error": str(e)
         }), 500
     finally:
         if 'cursor' in locals():
@@ -601,9 +613,13 @@ def delete_record():
         # Validate required fields
         if not all(key in data for key in ['table_name', 'filters']):
             return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields',
-                'status_code': 200
+                'Status': 'error',
+                'Message': 'Missing required fields',
+                "Data": {
+                    "Query": "DELETE",
+                    "Result": []
+                },
+                "error": "Missing required fields"
             }), 200
 
         table_name = data['table_name']
@@ -619,17 +635,25 @@ def delete_record():
         conn.commit()
 
         return jsonify({
-            'status': 'success',
-            'message': f'Deleted {affected_rows} rows successfully',
-            'status_code': 200
+            'Status': 'success',
+            'Message': f'Deleted {affected_rows} rows successfully',
+            "Data": {
+                "Query": "DELETE",
+                "Result": []
+            },
+            "error": None
         }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'status_code': 500
+            'Status': 'error',
+            'Message': str(e),
+            "Data": {
+                "Query": "DELETE",
+                "Result": []
+            },
+            "error": str(e)
         }), 500
     finally:
         if 'cursor' in locals():
@@ -1145,7 +1169,6 @@ def get_census_data():
             })
         
         cur.close()
-        conn.close()
         
         return jsonify({
             "Status": "Success",

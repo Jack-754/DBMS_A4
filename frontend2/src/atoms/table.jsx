@@ -1,10 +1,15 @@
-import React, { useState } from "react";
-
+import React from "react";
+import { useLocation } from 'react-router-dom';
 import './table.css';
 import DButton from "./DButton";
 // import { ReactComponent as NoDataImage } from '/icons/no-data.svg';
 
 const DTable = ({ headers, data, onDelete, onEdit }) => {
+  const userType = localStorage.getItem('user_type');
+  const location = useLocation();
+  const isProfilePage = location.pathname === '/app/profile';
+  const showActions = userType !== 'CITIZEN' && !isProfilePage;
+
   if (!data || data.length === 0) {
     return (
       <div className="no-data-container">
@@ -21,8 +26,12 @@ const DTable = ({ headers, data, onDelete, onEdit }) => {
             {headers.map((header) => (
               <th key={header.key} scope="col">{header.label}</th>
             ))}
-            <th scope="col" aria-label="Delete action"></th>
-            <th scope="col" aria-label="Edit action"></th>
+            {showActions && (
+              <>
+                <th scope="col" aria-label="Delete action"></th>
+                <th scope="col" aria-label="Edit action"></th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -31,22 +40,26 @@ const DTable = ({ headers, data, onDelete, onEdit }) => {
               {headers.map((header) => (
                 <td key={`${row.id}-${header.key}`}>{row[header.key]}</td>
               ))}
-              <td>
-                <DButton
-                  text="Delete"
-                  onClick={() => onDelete(row)}
-                  buttonClass="delete-btn-primary"
-                  aria-label={`Delete expense ${row.id}`}
-                />
-              </td>
-              <td>
-                <DButton
-                  text="Edit"
-                  onClick={() => onEdit(row)}
-                  buttonClass="edit-btn-primary"
-                  aria-label={`Edit expense ${row.id}`}
-                />
-              </td>
+              {showActions && (
+                <>
+                  <td>
+                    <DButton
+                      text="Delete"
+                      onClick={() => onDelete(row)}
+                      buttonClass="delete-btn-primary"
+                      aria-label={`Delete expense ${row.id}`}
+                    />
+                  </td>
+                  <td>
+                    <DButton
+                      text="Edit"
+                      onClick={() => onEdit(row)}
+                      buttonClass="edit-btn-primary"
+                      aria-label={`Edit expense ${row.id}`}
+                    />
+                  </td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>

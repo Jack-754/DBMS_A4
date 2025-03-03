@@ -110,6 +110,7 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
       navigate('/profile');
     } else {
       setErrors(response.data.message || 'Registration failed. Please try again.');
+      alert(response.data.Message || 'Registration failed');
     }
     setIsLoading(false);
   };

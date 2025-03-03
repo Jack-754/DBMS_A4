@@ -1,15 +1,15 @@
 import React from 'react';
 import DataTable from '../../components/DataTable';
 
-const Users = () => {
+const Taxfiling = () => {
   return (
     <div>
-      <h1>Users</h1>
+      <h1>Tax Filing</h1>
       <div>
         {/* Add data visualization components here */}
-        <div className="Users">
+        <div className="Taxfiling">
             
-          <DataTable tableName="users" />
+          <DataTable tableName="tax_filing" />
           {/* Add charts, graphs, and statistics */}
         </div>
       </div>
@@ -17,4 +17,4 @@ const Users = () => {
   );
 };
 
-export default Users; 
+export default Taxfiling; 

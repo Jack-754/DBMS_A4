@@ -1,15 +1,15 @@
 import React from 'react';
 import DataTable from '../../components/DataTable';
 
-const Users = () => {
+const Vaccination = () => {
   return (
     <div>
-      <h1>Users</h1>
+      <h1>Vaccination</h1>
       <div>
         {/* Add data visualization components here */}
-        <div className="Users">
+        <div className="Vaccination">
             
-          <DataTable tableName="users" />
+          <DataTable tableName="vaccination" />
           {/* Add charts, graphs, and statistics */}
         </div>
       </div>
@@ -17,4 +17,4 @@ const Users = () => {
   );
 };
 
-export default Users; 
+export default Vaccination; 

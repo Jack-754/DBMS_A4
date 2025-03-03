@@ -91,36 +91,6 @@ const Profile = ({ type }) => {
     };
 
     const renderContent = () => {
-        switch(type) {
-            case 'USER':
-                return (
-                   <></>
-                  
-                );
-            case 'admin':
-                return (
-                    <>
-                        <h2>Admin Profile</h2>
-                        {/* Add admin specific profile content */}
-                    </>
-                );
-            case 'monitor':
-                return (
-                    <>
-                        <h2>Government Monitor Profile</h2>
-                        {/* Add monitor specific profile content */}
-                    </>
-                );
-            case 'employee':
-                return (
-                    <>
-                        <h2>Government Employee Profile</h2>
-                        {/* Add employee specific profile content */}
-                    </>
-                );
-            default:
-                return <h2>Profile</h2>;
-        }
     };
 
     return (
@@ -164,16 +134,48 @@ const Profile = ({ type }) => {
                                 <div style={profileStyles.profileSection}>
                                     <h3 style={profileStyles.sectionTitle}>Additional Information</h3>
                                     <div style={profileStyles.profileField}>Vaccination Details
-                                        <DataTable tableName="vaccination" preFilters={[{column: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                        <DataTable 
+                                            tableName="vaccination" 
+                                            preFilters={{
+                                                citizen_id: {
+                                                    operator: 'eq',
+                                                    value: profileData.id
+                                                }
+                                            }} 
+                                        />
                                     </div>
                                     <div style={profileStyles.profileField}>IT Details
-                                        <DataTable tableName="tax_filings" preFilters={[{filter: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                        <DataTable 
+                                            tableName="tax_filing" 
+                                            preFilters={{
+                                                citizen_id: {
+                                                    operator: 'eq',
+                                                    value: profileData.id
+                                                }
+                                            }} 
+                                        />
                                     </div>
                                     <div style={profileStyles.profileField}>Assets
-                                        <DataTable tableName="assets" preFilters={[{column: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                        <DataTable 
+                                            tableName="assets" 
+                                            preFilters={{
+                                                owner_id: {
+                                                    operator: 'eq',
+                                                    value: profileData.id
+                                                }
+                                            }} 
+                                        />
                                     </div>
                                     <div style={profileStyles.profileField}>Certificates
-                                        <DataTable tableName="certificates" preFilters={[{column: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                        <DataTable 
+                                            tableName="certificates" 
+                                            preFilters={{
+                                                citizen_issued: {
+                                                    operator: 'eq',
+                                                    value: profileData.id
+                                                }
+                                            }} 
+                                        />
                                     </div>
                                 </div>
                             </div>

@@ -21,22 +21,24 @@ const iconMap = {
 };
 
 const signOut = async () => {
-  try {
-    const response = await axios.post(import.meta.env.VITE_APP_URI + '/signout', {
-      Query: "",
-      Add: "Signout",
-      Data: {}
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
+  // try {
+    // const response = await axios.post(import.meta.env.VITE_APP_URI + '/signout', {
+    //   Query: "",
+    //   Add: "Signout",
+    //   Data: {}
+    // }, {
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     'Accept': 'application/json'
+    //   }
+    // });
     localStorage.removeItem('user_type');
-    if (!response.error) window.location.href = '/';
-  } catch (error) {
-    console.error('Signout error:', error);
-  }
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    window.location.href = '/';
+  // } catch (error) {
+  //   console.error('Signout error:', error);
+  // }
 };
 
 function Navbar({ tabs }) {
@@ -54,7 +56,7 @@ function Navbar({ tabs }) {
   return (
     <nav className="main-menu">
       <div className="logo-container">
-        <h1>Trackify</h1>
+        <h1>GPMS</h1>
       </div>
       
       <ul>

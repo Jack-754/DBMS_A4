@@ -5,6 +5,7 @@ import DDropdown from '../atoms/DDropdown';
 import Modal from '../molecules/Modal';
 import DButton from '../atoms/DButton';
 import './DataTable.css';
+import { useLocation } from 'react-router-dom';
 
 const DataTable = ({ tableName = '', preFilters = {} }) => {
     const [selectedTable, setSelectedTable] = useState(tableName);
@@ -17,6 +18,12 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
     const [editFormData, setEditFormData] = useState({});
     const [filters, setFilters] = useState([]);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [addFormData, setAddFormData] = useState({});
+    const location = useLocation();
+    const userType = localStorage.getItem('user_type');
+    const isProfilePage = location.pathname === '/app/profile';
+    const showActions = userType !== 'CITIZEN' && !isProfilePage;
     console.log("preFilters", preFilters)
     console.log("tableName", tableName)
 
@@ -26,7 +33,7 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
             const initialFilters = Object.entries(preFilters).map(([column, filterData]) => ({
                 column,
                 operator: filterData.operator || 'eq',
-                value: Array.isArray(filterData.value) ? filterData.value.join(', ') : filterData.value,
+                value: filterData.value?.toString() || '',
                 id: Date.now() + Math.random()
             }));
             setFilters(initialFilters);
@@ -39,6 +46,11 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
             setSelectedTable(tableName);
         }
     }, [tableName]);
+
+    // Fetch data when filters or selectedTable changes
+    useEffect(() => {
+        fetchTableData();
+    }, [selectedTable, filters]);
 
     const operators = [
         { value: 'eq', label: 'Equals' },
@@ -94,10 +106,6 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
         'villages'
     ];
 
-    useEffect(() => {
-        fetchTableData();
-    }, [selectedTable]);
-
     const fetchTableData = async () => {
         try {
             setLoading(true);
@@ -113,6 +121,13 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
                             ? filter.value.split(',').map(v => v.trim())
                             : filter.value
                     };
+                }
+            });
+
+            // Add preFilters to transformed filters
+            Object.entries(preFilters).forEach(([column, filterData]) => {
+                if (!transformedFilters[column]) {
+                    transformedFilters[column] = filterData;
                 }
             });
 
@@ -146,6 +161,7 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
                 }
                 setError(null);
             } else {
+                alert(response.data.Message || 'Failed to fetch table data');
                 setError('No data available');
                 setHeaders([]);
                 setTableData([]);
@@ -155,6 +171,7 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
             setError(err.message || 'Failed to fetch data');
             setHeaders([]);
             setTableData([]);
+            alert(err.response?.data?.Message || err.message || 'Error fetching table data');
         } finally {
             setLoading(false);
         }
@@ -185,8 +202,13 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
                     'Content-Type': 'application/json'
                 },
             });
-            fetchTableData(); // Refresh the table
+            if(response.data.Status === "Success") {
+                fetchTableData();
+            } else {
+                alert(response.data.Message || 'Delete operation failed');
+            } // Refresh the table
         } catch (err) {
+            alert(err.response?.data?.Message || err.message || 'Failed to delete record');
             console.error('Error deleting record:', err);
             setError(err.message || 'Failed to delete record');
         }
@@ -224,11 +246,16 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
                 }
             });
 
-            setIsEditModalOpen(false);
-            fetchTableData(); // Refresh the table
+            if(response.data.Status === "Success") {
+                setIsEditModalOpen(false);
+                fetchTableData();
+            } else {
+                alert(response.data.Message || 'Update operation failed');
+            }
         } catch (err) {
             console.error('Error updating record:', err);
             setError(err.message || 'Failed to update record');
+            alert(err.response?.data?.Message || err.message || 'Failed to update record');
         }
     };
 
@@ -239,14 +266,62 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
         }));
     };
 
+    const handleAdd = () => {
+        setAddFormData({});
+        setIsAddModalOpen(true);
+    };
+
+    const handleAddSubmit = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(import.meta.env.VITE_APP_URI + '/insert', {
+                Query: "INSERT",
+                Data: {
+                    table_name: selectedTable,
+                    values: addFormData
+                }
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if(response.data.Status === "Success") {
+                setIsAddModalOpen(false);
+                fetchTableData();
+            } else {
+                alert(response.data.Message || 'Add operation failed');
+            }// Refresh the table
+        } catch (err) {
+            console.error('Error adding record:', err);
+            setError(err.message || 'Failed to add record');
+            alert(err.response?.data?.Message || err.message || 'Failed to add record');
+        }
+    };
+
+    const handleAddInputChange = (key, value) => {
+        setAddFormData(prev => ({
+            ...prev,
+            [key]: value
+        }));
+    };
+
     return (
         <div className="data-table-container">
             <div className="table-controls">
-                <DDropdown
+                {showActions && (
+                    <DButton
+                        text="Add New"
+                        onClick={handleAdd}
+                        buttonClass="success-button"
+                    />
+                )}
+                {/* <DDropdown
                     name={selectedTable}
                     data={tables}
                     func={setSelectedTable}
-                />
+                /> */}
                 <div className="filter-controls">
                     <DButton
                         text="Add Filter"
@@ -328,6 +403,41 @@ const DataTable = ({ tableName = '', preFilters = {} }) => {
                         onDelete={handleDelete}
                         onEdit={handleEdit}
                     />
+                    {isAddModalOpen && (
+                        <Modal
+                            openModal={isAddModalOpen}
+                            setOpenModal={setIsAddModalOpen}
+                            modalName="Add New Record"
+                            height="auto"
+                            width="50%"
+                        >
+                            <div className="edit-form">
+                                {headers.map(header => (
+                                    <div key={header.key} className="form-group">
+                                        <label>{header.label}:</label>
+                                        <input
+                                            type="text"
+                                            value={addFormData[header.key] || ''}
+                                            onChange={(e) => handleAddInputChange(header.key, e.target.value)}
+                                            className="edit-input"
+                                        />
+                                    </div>
+                                ))}
+                                <div className="edit-form-buttons">
+                                    <DButton
+                                        text="Save"
+                                        onClick={handleAddSubmit}
+                                        buttonClass="edit-btn-primary"
+                                    />
+                                    <DButton
+                                        text="Cancel"
+                                        onClick={() => setIsAddModalOpen(false)}
+                                        buttonClass="delete-btn-primary"
+                                    />
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
                     {isEditModalOpen && editingRow && (
                         <Modal
                             openModal={isEditModalOpen}

@@ -8,10 +8,14 @@ import Dashboard from './modules/dashboard/dashboard.jsx'
 import Profile from './modules/profile/profile.jsx'
 import Users from './modules/users/users.jsx'
 import Schemes from './modules/schemes/schemes.jsx'
+import Pmembers from './modules/p_members/p_members.jsx'
 // import Admin from './modules/admin/admin.jsx'
 import AuthPage from './modules/auth/authPage.jsx'
 // import Expenses from './modules/expenses/expenses.jsx'
 import DataDashboard from './modules/monitor/DataDashboard.jsx'
+import Vaccination from './modules/Vaccination/Vaccination.jsx'
+import Taxfiling from './modules/Taxfiling/Taxfiling.jsx'
+import Household from './modules/Household/Household.jsx'
 import { useState, useEffect } from "react";
 
 
@@ -52,7 +56,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/app',
-    element: <ProtectedRoute allowedRoles={['citizen', 'admin', 'govt_monitor', 'govt_employee']}><App /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['CITIZEN', 'SYSTEM_ADMINISTRATOR', 'GOVERNMENT_MONITOR', 'PANCHAYAT_EMPLOYEES']}><App /></ProtectedRoute>,
     children: [
       {
         path: "",
@@ -65,28 +69,52 @@ const router = createBrowserRouter([
       // Citizen Routes
       {
         path: "profile",
-        element: <ProtectedRoute allowedRoles={['USER', 'admin', 'govt_monitor', 'govt_employee']}>
+        element: <ProtectedRoute allowedRoles={['CITIZEN', 'SYSTEM_ADMINISTRATOR', 'GOVERNMENT_MONITOR', 'PANCHAYAT_EMPLOYEES']}>
           <Profile type={localStorage.getItem('user_type')} />
         </ProtectedRoute>
       },
       {
         path: "schemes",
-        element: <ProtectedRoute allowedRoles={['USER']}>
+        element: <ProtectedRoute allowedRoles={['CITIZEN']}>
           <Schemes />
         </ProtectedRoute>
       },
       // Admin & Government Employee Routes
       {
         path: "users",
-        element: <ProtectedRoute allowedRoles={['admin', 'govt_employee']}>
-          <Users canEdit canDelete />
+        element: <ProtectedRoute allowedRoles={['SYSTEM_ADMINISTRATOR']}>
+          <Users />
         </ProtectedRoute>
       },
       // Government Monitor Routes
       {
         path: "data",
-        element: <ProtectedRoute allowedRoles={['govt_monitor']}>
+        element: <ProtectedRoute allowedRoles={['GOVERNMENT_MONITOR']}>
           <DataDashboard />
+        </ProtectedRoute>
+      },
+      {
+        path: "p_members",
+        element: <ProtectedRoute allowedRoles={['GOVERNMENT_MONITOR', 'CITIZEN']}>
+          <Pmembers />
+        </ProtectedRoute>
+      },
+      {
+        path: "vaccination",
+        element: <ProtectedRoute allowedRoles={['PANCHAYAT_EMPLOYEES']}>
+          <Vaccination />
+        </ProtectedRoute>
+      },
+      {
+        path: "tax_filing",
+        element: <ProtectedRoute allowedRoles={['PANCHAYAT_EMPLOYEES']}>
+          <Taxfiling />
+        </ProtectedRoute>
+      },
+      {
+        path: "household",
+        element: <ProtectedRoute allowedRoles={['PANCHAYAT_EMPLOYEES']}>
+          <Household />
         </ProtectedRoute>
       }
     ]

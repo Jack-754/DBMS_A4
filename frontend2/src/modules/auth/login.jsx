@@ -57,17 +57,24 @@ const Login = ({ className, onBackClick }) => {
       console.log(response.data);
 
       if(response.data.Status === "Success"){
-
         localStorage.setItem('user_id', response.data.Data.Result[0].userId);
         localStorage.setItem('user_type', response.data.Data.Result[0].type);
         localStorage.setItem('token', response.data.access_token);
         setErrors('');
-        navigate('/app/profile');
+
+        // Navigate based on user type
+        if (response.data.Data.Result[0].type === 'SYSTEM_ADMINISTRATOR') {
+          navigate('/app/users');
+        } else {
+          navigate('/app/profile');
+        }
       } else {
         setErrors(response.data.message || 'Invalid email or password');
+        alert(response.data.Message || 'Login failed');
       }
     } catch (error) {
       setErrors(error.response?.data?.message || 'An error occurred during login');
+      alert(error.response?.data?.Message || error.message || 'An error occurred during login');
     } finally {
       setIsLoading(false);
     }

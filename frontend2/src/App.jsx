@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import '../styles.css'
 import './App.css'
 // import { callAPI } from './services/ApiHelper'
 import { Outlet } from 'react-router-dom'
@@ -14,34 +15,32 @@ const getTabs = (userType) => {
     case 'CITIZEN':
       return [
         ...commonTabs,
-        { label: "Village Representatives", icon: 1, link: "/village_representative" },
         { label: "Profile", icon: 1, link: "/app/profile" },
+        { label: "Panchayat Members", icon: 1, link: "/app/p_members" },
         { label: "Schemes", icon: 1, link: "/app/schemes" },
       ];
 
-    case 'ADMIN':
+    case 'SYSTEM_ADMINISTRATOR':
       return [
         ...commonTabs,
-        { label: "Users", icon: 1, link: "admin/users" },
-        { label: "Villages", icon: 1, link: "admin/villages" },
+        { label: "Users", icon: 1, link: "/app/users" },
       ];
 
-    case 'GOVT_MONITOR':
+    case 'GOVERNMENT_MONITOR':
       return [
         ...commonTabs,
-        { label: "Profile", icon: 1, link: "monitor/profile" },
-        { label: "Dashboard", icon: 1, link: "monitor/data" },
+        { label: "Profile", icon: 1, link: "/app/profile" },
+        { label: "Dashboard", icon: 1, link: "/app/data" },
       ];
 
-    case 'GOVT_EMPLOYEE':
+    case 'PANCHAYAT_EMPLOYEES':
       return [
         ...commonTabs,
-        { label: "Profile", icon: 1, link: "employee/profile" },
-        { label: "Users", icon: 1, link: "employee/users" },
-        { label: "Schemes", icon: 1, link: "employee/schemes" },
-        { label: "Vaccination", icon: 1, link: "employee/vaccination" },
-        { label: "Household", icon: 1, link: "employee/household" },
-        { label: "Tax Filing", icon: 1, link: "employee/tax_filing" },
+        { label: "Profile", icon: 1, link: "/app/profile" },
+        { label: "Schemes", icon: 1, link: "/app/schemes" },
+        { label: "Vaccination", icon: 1, link: "/app/vaccination" },
+        { label: "Household", icon: 1, link: "/app/household" },
+        { label: "Tax Filing", icon: 1, link: "/app/tax_filing" },
       ];
 
     default:

@@ -90,8 +90,8 @@ def register():
     try:
         data = request.get_json()
         if not data:
-            response.update({"status": "Failed",
-            "message": "Invalid JSON data",
+            response.update({"Status": "Failed",
+            "Message": "Invalid JSON data",
             "Data": {
                 "Query" : "REGISTER",
                 "Data" : []
@@ -102,8 +102,8 @@ def register():
         required_fields = ['citizen_id', 'username', 'password']
         if not all(field in data['Data'] and data['Data'][field] for field in required_fields):
             response.update({
-                "status": "Failure",
-                "message": "Missing required fields",
+                "Status": "Failure",
+                "Message": "Missing required fields",
                 "Data": {
                     "Query" : "REGISTER",
                     "Data" : []
@@ -117,8 +117,8 @@ def register():
 
         if len(username) < 3 or len(password) < 6:
             response.update({
-                "status": "Failure",
-                "message": "Invalid username or password length",
+                "Status": "Failure",
+                "Message": "Invalid username or password length",
                 "Data": {
                     "Query" : "REGISTER",
                     "Data" : []
@@ -135,8 +135,8 @@ def register():
             if existing_user:
                 field = 'Citizen ID' if existing_user[0] == citizen_id else 'Username'
                 response.update({
-                    "status": "Failure",
-                    "message": f'{field} already registered',
+                    "Status": "Failure",
+                    "Message": f'{field} already registered',
                     "Data": {
                         "Query" : "REGISTER",
                         "Data" : []
@@ -149,8 +149,8 @@ def register():
             valid = cur.fetchone()
             if not valid:
                 response.update({
-                    "status": "Failure",
-                    "message": f'No such citizen found',
+                    "Status": "Failure",
+                    "Message": f'No such citizen found',
                     "Data": {
                         "Query" : "REGISTER",
                         "Data" : []
@@ -163,8 +163,8 @@ def register():
             conn.commit()
 
         response.update({
-            "status": "Success",
-            "message": "User registered successfully",
+            "Status": "Success",
+            "Message": "User registered successfully",
             "Data": {
                 "Query" : "REGISTER",
                 "Data" : []
@@ -176,8 +176,8 @@ def register():
         conn.rollback()
         print(f"Registration error: {str(e)}")
         response.update({
-            "status": "Failure",
-            "message": "Internal server error",
+            "Status": "Failure",
+            "Message": "Internal server error",
             "Data": {
                 "Query" : "REGISTER",
                 "Data" : []
@@ -318,7 +318,7 @@ def citizen_tax_filings():
     tax_filings = get_citizen_tax_filings(user_id)
     if tax_filings:
         return jsonify({
-            "status": "Success",
+            "Status": "Success",
             "Message": "Tax filings retrieved successfully",
             "Data": {
                 "Query": "SELECT",
@@ -352,7 +352,7 @@ def citizen_certificates():
     certificates = get_citizen_certificates(user_id)
     if certificates:
         return jsonify({
-            "status": "Success",
+            "Status": "Success",
             "Message": "Certificates retrieved successfully",
             "Data": {
                 "Query": "SELECT",
@@ -386,7 +386,7 @@ def citizen_enrolled_schemes():
     schemes = get_citizen_schemes(user_id)
     if schemes:
         return jsonify({
-            "status": "Success",
+            "Status": "Success",
             "Message": "Scheme enrollments retrieved successfully",
             "Data": {
                 "Query": "SELECT",
@@ -597,9 +597,9 @@ def insert_record():
 
         if not all(key in data["Data"] for key in ['table_name', 'values']):
             return jsonify({
-                'status': 'error',
-                'message': 'Missing required fields',
-                'status_code': 200
+                'Status': 'error',
+                'Message': 'Missing required fields',
+                'Status_code': 200
             }), 200
 
         table_name = data["Data"]['table_name']
@@ -615,17 +615,17 @@ def insert_record():
         conn.commit()
 
         return jsonify({
-            'status': 'success',
-            'message': 'Record inserted successfully',
-            'status_code': 200
+            'Status': 'success',
+            'Message': 'Record inserted successfully',
+            'Status_code': 200
         }), 200
 
     except Exception as e:
         conn.rollback()
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'status_code': 500
+            'Status': 'error',
+            'Message': str(e),
+            'Status_code': 500
         }), 500
     finally:
         if 'cursor' in locals():

@@ -62,7 +62,7 @@ const Login = ({ className, onBackClick }) => {
         localStorage.setItem('user_type', response.data.Data.Result[0].type);
         localStorage.setItem('token', response.data.access_token);
         setErrors('');
-        navigate('/profile');
+        navigate('/app/profile');
       } else {
         setErrors(response.data.message || 'Invalid email or password');
       }

@@ -9,6 +9,7 @@ const Schemes = () => {
         <div className="schemes-list">
           {/* Add scheme cards or list items here */}
           asdfghjhgf
+          
         </div>
       </div>
     </div>

@@ -6,8 +6,8 @@ import Modal from '../molecules/Modal';
 import DButton from '../atoms/DButton';
 import './DataTable.css';
 
-const DataTable = () => {
-    const [selectedTable, setSelectedTable] = useState('panchayat_employees');
+const DataTable = ({ tableName = '', preFilters = {} }) => {
+    const [selectedTable, setSelectedTable] = useState(tableName);
     const [tableData, setTableData] = useState([]);
     const [headers, setHeaders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -17,6 +17,28 @@ const DataTable = () => {
     const [editFormData, setEditFormData] = useState({});
     const [filters, setFilters] = useState([]);
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    console.log("preFilters", preFilters)
+    console.log("tableName", tableName)
+
+    // Convert preFilters to internal filter format on mount and when preFilters change
+    useEffect(() => {
+        if (Object.keys(preFilters).length > 0) {
+            const initialFilters = Object.entries(preFilters).map(([column, filterData]) => ({
+                column,
+                operator: filterData.operator || 'eq',
+                value: Array.isArray(filterData.value) ? filterData.value.join(', ') : filterData.value,
+                id: Date.now() + Math.random()
+            }));
+            setFilters(initialFilters);
+        }
+    }, [preFilters]);
+
+    // Update selectedTable when tableName prop changes
+    useEffect(() => {
+        if (tableName) {
+            setSelectedTable(tableName);
+        }
+    }, [tableName]);
 
     const operators = [
         { value: 'eq', label: 'Equals' },
@@ -49,7 +71,15 @@ const DataTable = () => {
     };
 
     const clearFilters = () => {
-        setFilters([]);
+        setFilters(Object.keys(preFilters).length > 0 ? 
+            Object.entries(preFilters).map(([column, filterData]) => ({
+                column,
+                operator: filterData.operator || 'eq',
+                value: Array.isArray(filterData.value) ? filterData.value.join(', ') : filterData.value,
+                id: Date.now() + Math.random()
+            })) : 
+            []
+        );
         fetchTableData();
     };
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useEffect } from 'react';
+import DataTable from '../../components/DataTable';
 
 const profileStyles = {
     profileContainer: {
@@ -19,11 +20,13 @@ const profileStyles = {
         marginBottom: '12px',
         display: 'flex',
         alignItems: 'center',
+        color: '#333',
     },
     label: {
         fontWeight: 'bold',
         minWidth: '150px',
         marginRight: '10px',
+        color: '#333',
     },
     value: {
         color: '#333',
@@ -160,10 +163,18 @@ const Profile = ({ type }) => {
                                 
                                 <div style={profileStyles.profileSection}>
                                     <h3 style={profileStyles.sectionTitle}>Additional Information</h3>
-                                    <div style={profileStyles.profileField}>Vaccination Details</div>
-                                    <div style={profileStyles.profileField}>IT Details</div>
-                                    <div style={profileStyles.profileField}>Assets</div>
-                                    <div style={profileStyles.profileField}>Certificates</div>
+                                    <div style={profileStyles.profileField}>Vaccination Details
+                                        <DataTable tableName="vaccination" preFilters={[{column: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                    </div>
+                                    <div style={profileStyles.profileField}>IT Details
+                                        <DataTable tableName="tax_filings" preFilters={[{filter: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                    </div>
+                                    <div style={profileStyles.profileField}>Assets
+                                        <DataTable tableName="assets" preFilters={[{column: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                    </div>
+                                    <div style={profileStyles.profileField}>Certificates
+                                        <DataTable tableName="certificates" preFilters={[{column: "citizen_id", operator: "eq", value: profileData.id}]} />
+                                    </div>
                                 </div>
                             </div>
                         ) : (

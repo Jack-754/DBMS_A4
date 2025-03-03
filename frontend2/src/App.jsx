@@ -14,9 +14,9 @@ const getTabs = (userType) => {
     case 'CITIZEN':
       return [
         ...commonTabs,
-        { label: "Village Representatives", icon: 1, link: "citizen/village_representative" },
-        { label: "Profile", icon: 1, link: "citizen/profile" },
-        { label: "Schemes", icon: 1, link: "citizen/schemes" },
+        { label: "Village Representatives", icon: 1, link: "/village_representative" },
+        { label: "Profile", icon: 1, link: "/app/profile" },
+        { label: "Schemes", icon: 1, link: "/app/schemes" },
       ];
 
     case 'ADMIN':

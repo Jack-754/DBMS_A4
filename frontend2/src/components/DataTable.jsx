@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DTable from '../atoms/table';
 import DDropdown from '../atoms/DDropdown';
+import Modal from '../molecules/Modal';
+import DButton from '../atoms/DButton';
 import './DataTable.css';
 
 const DataTable = () => {
@@ -10,6 +12,50 @@ const DataTable = () => {
     const [headers, setHeaders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingRow, setEditingRow] = useState(null);
+    const [editFormData, setEditFormData] = useState({});
+    const [filters, setFilters] = useState([]);
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+    const operators = [
+        { value: 'eq', label: 'Equals' },
+        { value: 'ne', label: 'Not Equals' },
+        { value: 'gt', label: 'Greater Than' },
+        { value: 'lt', label: 'Less Than' },
+        { value: 'gte', label: 'Greater Than or Equal' },
+        { value: 'lte', label: 'Less Than or Equal' },
+        { value: 'contains', label: 'Contains' },
+        { value: 'between', label: 'Between' }
+    ];
+
+    const addFilter = () => {
+        setFilters([...filters, {
+            column: headers[0]?.key || '',
+            operator: 'eq',
+            value: '',
+            id: Date.now()
+        }]);
+    };
+
+    const removeFilter = (filterId) => {
+        setFilters(filters.filter(f => f.id !== filterId));
+    };
+
+    const updateFilter = (id, field, value) => {
+        setFilters(filters.map(filter => 
+            filter.id === id ? { ...filter, [field]: value } : filter
+        ));
+    };
+
+    const clearFilters = () => {
+        setFilters([]);
+        fetchTableData();
+    };
+
+    const applyFilters = () => {
+        fetchTableData();
+    };
 
     const tables = [
         'village_representative',
@@ -26,24 +72,36 @@ const DataTable = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const response = await axios.get(import.meta.env.VITE_APP_URI + '/query_table', {
+            
+            // Transform filters into the required format
+            const transformedFilters = {};
+            filters.forEach(filter => {
+                if (filter.value !== '') {
+                    transformedFilters[filter.column] = {
+                        operator: filter.operator,
+                        value: filter.operator === 'between' 
+                            ? filter.value.split(',').map(v => v.trim())
+                            : filter.value
+                    };
+                }
+            });
+
+            const response = await axios.post(import.meta.env.VITE_APP_URI + '/query_table', {
+                Query: "SELECT",
+                Data: {
+                    table_name: selectedTable,
+                    filters: transformedFilters
+                }
+            }, {
                 headers: {
-                    // 'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
-                },
-                data: {
-                    Query: "SELECT",
-                    Data: {
-                        table_name: selectedTable,  
-                        filters:[]
-                    },
                 }
             });
 
             if (response.data.Status === 'Success' && response.data.Data.Result) {
                 const data = response.data.Data.Result;
                 if (data.length > 0) {
-                    // Create headers from the first row
                     const headersList = Object.keys(data[0]).map(key => ({
                         key: key,
                         label: key.split('_').map(word => 
@@ -72,26 +130,30 @@ const DataTable = () => {
         }
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (row) => {
         try {
+            console.log(row)
+            const filters = {}
+            for (const key in row) {
+                filters[key] = {
+                    operator: 'eq',
+                    value: row[key]
+                }
+            }
             const token = localStorage.getItem('token');
-            await axios.delete(import.meta.env.VITE_APP_URI + '/delete', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                data: {
+            await axios.    post(import.meta.env.VITE_APP_URI + '/delete',
+                {
                     Query: "DELETE",
                     Data: {
                         table_name: selectedTable,
-                        filters: {
-                            id: {
-                                operator: 'eq',
-                                value: id
-                            }
-                        }
+                        filters: filters
                     }
-                }
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
             });
             fetchTableData(); // Refresh the table
         } catch (err) {
@@ -100,9 +162,51 @@ const DataTable = () => {
         }
     };
 
-    const handleEdit = (id) => {
-        // Implement edit functionality
-        console.log('Edit record with ID:', id);
+    const handleEdit = (row) => {
+        console.log(row)
+        setEditingRow(row);
+        setEditFormData(row);
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditSubmit = async () => {
+        try {
+            const filters = {};
+            for (const key in editingRow) {
+                filters[key] = {
+                    operator: 'eq',
+                    value: editingRow[key]
+                };
+            }
+
+            const token = localStorage.getItem('token');
+            await axios.post(import.meta.env.VITE_APP_URI + '/update', {
+                Query: "UPDATE",
+                Data: {
+                    table_name: selectedTable,
+                    filters: filters,
+                    new_values: editFormData
+                }
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            setIsEditModalOpen(false);
+            fetchTableData(); // Refresh the table
+        } catch (err) {
+            console.error('Error updating record:', err);
+            setError(err.message || 'Failed to update record');
+        }
+    };
+
+    const handleInputChange = (key, value) => {
+        setEditFormData(prev => ({
+            ...prev,
+            [key]: value
+        }));
     };
 
     return (
@@ -113,19 +217,123 @@ const DataTable = () => {
                     data={tables}
                     func={setSelectedTable}
                 />
+                <div className="filter-controls">
+                    <DButton
+                        text="Add Filter"
+                        onClick={addFilter}
+                        buttonClass="primary-button"
+                    />
+                    {filters.length > 0 && (
+                        <>
+                            <DButton
+                                text="Apply Filters"
+                                onClick={applyFilters}
+                                buttonClass="success-button"
+                            />
+                            <DButton
+                                text="Clear Filters"
+                                onClick={clearFilters}
+                                buttonClass="warning-button"
+                            />
+                        </>
+                    )}
+                </div>
             </div>
+
+            {filters.length > 0 && (
+                <div className="filters-container">
+                    {filters.map((filter) => (
+                        <div key={filter.id} className="filter-row">
+                            <select
+                                value={filter.column}
+                                onChange={(e) => updateFilter(filter.id, 'column', e.target.value)}
+                                className="filter-select"
+                            >
+                                {headers.map((header) => (
+                                    <option key={header.key} value={header.key}>
+                                        {header.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={filter.operator}
+                                onChange={(e) => updateFilter(filter.id, 'operator', e.target.value)}
+                                className="filter-select"
+                            >
+                                {operators.map((op) => (
+                                    <option key={op.value} value={op.value}>
+                                        {op.label}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <input
+                                type="text"
+                                value={filter.value}
+                                onChange={(e) => updateFilter(filter.id, 'value', e.target.value)}
+                                placeholder={filter.operator === 'between' ? 'Enter values separated by comma' : 'Enter value'}
+                                className="filter-input"
+                            />
+
+                            <DButton
+                                text="Remove"
+                                onClick={() => removeFilter(filter.id)}
+                                buttonClass="delete-button"
+                            />
+                        </div>
+                    ))}
+                </div>
+            )}
             
             {loading ? (
                 <div>Loading...</div>
             ) : error ? (
                 <div className="error-message">{error}</div>
             ) : (
-                <DTable
-                    headers={headers}
-                    data={tableData}
-                    onDelete={handleDelete}
-                    onEdit={handleEdit}
-                />
+                <>
+                    <DTable
+                        headers={headers}
+                        data={tableData}
+                        onDelete={handleDelete}
+                        onEdit={handleEdit}
+                    />
+                    {isEditModalOpen && editingRow && (
+                        <Modal
+                            openModal={isEditModalOpen}
+                            setOpenModal={setIsEditModalOpen}
+                            modalName="Edit Record"
+                            height="auto"
+                            width="50%"
+                        >
+                            <div className="edit-form">
+                                {headers.map(header => (
+                                    <div key={header.key} className="form-group">
+                                        <label>{header.label}:</label>
+                                        <input
+                                            type="text"
+                                            value={editFormData[header.key] || ''}
+                                            onChange={(e) => handleInputChange(header.key, e.target.value)}
+                                            className="edit-input"
+                                        />
+                                    </div>
+                                ))}
+                                <div className="edit-form-buttons">
+                                    <DButton
+                                        text="Save"
+                                        onClick={handleEditSubmit}
+                                        buttonClass="edit-btn-primary"
+                                    />
+                                    <DButton
+                                        text="Cancel"
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        buttonClass="delete-btn-primary"
+                                    />
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+                </>
             )}
         </div>
     );

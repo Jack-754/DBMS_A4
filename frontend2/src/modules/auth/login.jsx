@@ -43,8 +43,8 @@ const Login = ({ className, onBackClick }) => {
         Query: "",
         Add: "Login",
         Data: {
-            "username": "john_doe",
-            "password": "hashedpassword1"
+            "username": email,
+            "password": password
           // userId: email,
           // password: password
         }

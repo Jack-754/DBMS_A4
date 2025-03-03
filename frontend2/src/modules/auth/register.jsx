@@ -76,13 +76,13 @@ const Register = ({ className, onLoginClick ,onSuccess}) => {
       // validationErrors.confirmPassword = "Passwords do not match";
     }
 
-    const response = await axios.post(import.meta.env.VITE_APP_URI + '/login', {
+    const response = await axios.post(import.meta.env.VITE_APP_URI + '/register', {
       Query: "",
       Add: "Register",
       Data: {
         name: name,
         citizen_id: citizen_id,
-        userId: email,
+        username: email,
         password: password,
       }
     }, {

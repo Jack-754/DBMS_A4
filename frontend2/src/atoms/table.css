@@ -18,45 +18,89 @@ table body {
     border: 2px solid rgba(179, 137, 235, 0.342);
     border-radius: 12px;
     background-color: rgb(255, 255, 255);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .no-data-image {
     width: 80%;
     height: 80%;
+    opacity: 0.8;
 }
 
 /* No Data Text */
 .no-data-text {
-    color: #888;
+    color: #666;
     font-size: 1.5rem;
     margin-top: 1rem;
+    font-weight: 500;
 }
 
 .recent-transactions {
     margin-top: 32px;
     max-height: 80vh;
-    overflow-y: scroll;
+    overflow-y: auto;
     border: 2px solid rgba(179, 137, 235, 0.342);
     border-radius: 12px;
-    background-color: rgba(179, 137, 235, 0.342);
+    background-color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .recent-transactions table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     background-color: white;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.recent-transactions th,
-td {
-    padding: 16px;
-    text-align: left;
-    border-bottom: 1px solid #E2E8F0;
+.recent-transactions thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .recent-transactions th {
     background-color: rgba(179, 137, 235, 0.342);
+    color: #444;
+    font-weight: 600;
+    padding: 16px;
+    text-align: left;
+    border-bottom: 2px solid rgba(179, 137, 235, 0.5);
+    white-space: nowrap;
+}
+
+.recent-transactions td {
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid #E2E8F0;
+    color: #4A5568;
+}
+
+.recent-transactions tbody tr:hover {
+    background-color: rgba(179, 137, 235, 0.05);
+    transition: background-color 0.2s ease;
+}
+
+.recent-transactions tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Scrollbar styling */
+.recent-transactions::-webkit-scrollbar {
+    width: 8px;
+}
+
+.recent-transactions::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.recent-transactions::-webkit-scrollbar-thumb {
+    background: rgba(179, 137, 235, 0.5);
+    border-radius: 4px;
+}
+
+.recent-transactions::-webkit-scrollbar-thumb:hover {
+    background: rgba(179, 137, 235, 0.7);
 }

@@ -107,9 +107,8 @@ CREATE TABLE IF NOT EXISTS certificates (
 CREATE TABLE IF NOT EXISTS assets (
     asset_id SERIAL PRIMARY KEY,
     asset_type VARCHAR(50) NOT NULL,
-    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE,
-    owner_id INT NOT NULL,
-    FOREIGN KEY (owner_id) REFERENCES citizens(id) ON DELETE CASCADE
+    location VARCHAR(100),
+    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
 -- PANCHAYAT EMPLOYEES TABLE (Depends on CITIZENS and VILLAGE)
@@ -173,7 +172,22 @@ CREATE TABLE IF NOT EXISTS vaccination (
 	date_administered DATE NOT NULL DEFAULT CURRENT_DATE,
     FOREIGN KEY (citizen_id) REFERENCES citizens(id) ON DELETE CASCADE
 );
+CREATE TABLE census_data (
+    citizen_id INT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_date DATE NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens (id),
+    CHECK (event_type IN ('Birth', 'Death', 'Marriage', 'Divorce'))
+);
 
+CREATE TABLE land_records (
+    land_id SERIAL PRIMARY KEY,
+    citizen_id INT NOT NULL,
+    area_acres DECIMAL(10, 2) NOT NULL,
+    crop_type TEXT NOT NULL,
+    FOREIGN KEY (citizen_id) REFERENCES citizens (id),
+    CHECK (crop_type IN ('Rice', 'Wheat', 'Cotton', 'Sugarcane', 'Maize'))
+);
 
 -- Insert villages first (Independent table)
 INSERT INTO village (name) VALUES 
@@ -320,19 +334,20 @@ INSERT INTO certificates (cert_type, citizen_issued) VALUES
     ('Birth Certificate', 20);
 
 -- Insert assets
-INSERT INTO assets (asset_type, owner_id, date_of_registration) VALUES 
-    ('Land', 1, '2022-01-15'),
-    ('House', 1, '2022-03-20'),
-    ('Vehicle', 2, '2022-05-10'),
-    ('Land', 3, '2022-02-25'),
-    ('House', 5, '2022-04-15'),
-    ('Vehicle', 6, '2022-06-20'),
-    ('Land', 7, '2022-07-10'),
-    ('House', 10, '2022-08-05'),
-    ('Vehicle', 13, '2022-09-15'),
-    ('Land', 14, '2022-10-20'),
-    ('House', 17, '2022-11-25'),
-    ('Vehicle', 18, '2022-12-30');
+
+INSERT INTO assets (asset_type, location, date_of_registration) VALUES 
+    ('Land', 'North Greenwood Plot 12', '2022-01-15'),
+    ('House', '123 Main St, Greenwood', '2022-03-20'),
+    ('Vehicle', 'Registered in Greenwood DMV', '2022-05-10'),
+    ('Land', 'South Greenwood Plot 7', '2022-02-25'),
+    ('House', '456 Elm St, Sunnyvale', '2022-04-15'),
+    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-06-20'),
+    ('Land', 'Riverside Agricultural Zone', '2022-07-10'),
+    ('House', '654 Maple St, Meadowbrook', '2022-08-05'),
+    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-09-15'),
+    ('Land', 'Highland Hilltop Area', '2022-10-20'),
+    ('House', '987 Cedar St, Highland', '2022-11-25'),
+    ('Vehicle', 'Registered in Riverside DMV', '2022-12-30');
 
 -- Insert schemes
 INSERT INTO schemes (name, description) VALUES 
@@ -371,3 +386,39 @@ INSERT INTO expenditure (category, amount, date_spent) VALUES
     ('Waste Management', 250000, '2023-11-20'),
     ('Community Hall Renovation', 450000, '2023-12-25'),
     ('Emergency Services', 180000, '2024-01-30');
+
+-- Insert census_data entries
+INSERT INTO census_data (citizen_id, event_type, event_date) VALUES 
+    (1, 'Marriage', '2005-06-15'),
+    (2, 'Marriage', '2005-06-15'),
+    (3, 'Marriage', '2000-03-22'),
+    (4, 'Marriage', '2000-03-22'),
+    (5, 'Marriage', '2015-08-10'),
+    (6, 'Marriage', '2015-08-10'),
+    (7, 'Marriage', '2018-12-25'),
+    (8, 'Marriage', '2018-12-25'),
+    (9, 'Birth', '1985-08-22'),
+    (10, 'Birth', '1987-04-17'),
+    (11, 'Divorce', '2022-11-30'),
+    (12, 'Divorce', '2022-11-30'),
+    (13, 'Marriage', '2019-02-14'),
+    (14, 'Marriage', '2019-02-14'),
+    (15, 'Death', '2023-09-01');
+
+-- Insert land_records entries
+INSERT INTO land_records (citizen_id, area_acres, crop_type) VALUES 
+    (1, 5.50, 'Rice'),
+    (1, 3.25, 'Wheat'),
+    (3, 4.75, 'Cotton'),
+    (5, 6.00, 'Sugarcane'),
+    (6, 2.50, 'Maize'),
+    (7, 8.25, 'Rice'),
+    (9, 3.75, 'Wheat'),
+    (11, 5.00, 'Cotton'),
+    (13, 7.50, 'Sugarcane'),
+    (14, 4.25, 'Maize'),
+    (15, 6.75, 'Rice'),
+    (17, 3.50, 'Wheat'),
+    (18, 5.25, 'Cotton'),
+    (19, 4.00, 'Sugarcane'),
+    (20, 2.75, 'Maize');

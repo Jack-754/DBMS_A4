@@ -108,7 +108,9 @@ CREATE TABLE IF NOT EXISTS assets (
     asset_id SERIAL PRIMARY KEY,
     asset_type VARCHAR(50) NOT NULL,
     location VARCHAR(100),
-    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE
+    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE,
+    village_id INT NOT NULL,
+    FOREIGN KEY (village_id) REFERENCES village(id) ON DELETE CASCADE
 );
 
 -- PANCHAYAT EMPLOYEES TABLE (Depends on CITIZENS and VILLAGE)
@@ -335,20 +337,20 @@ INSERT INTO certificates (cert_type, citizen_issued) VALUES
 
 -- Insert assets
 
-INSERT INTO assets (asset_type, location, date_of_registration) VALUES 
-    ('Land', 'North Greenwood Plot 12', '2022-01-15'),
-    ('House', '123 Main St, Greenwood', '2022-03-20'),
-    ('Vehicle', 'Registered in Greenwood DMV', '2022-05-10'),
-    ('Land', 'South Greenwood Plot 7', '2022-02-25'),
-    ('House', '456 Elm St, Sunnyvale', '2022-04-15'),
-    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-06-20'),
-    ('Land', 'Riverside Agricultural Zone', '2022-07-10'),
-    ('House', '654 Maple St, Meadowbrook', '2022-08-05'),
-    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-09-15'),
-    ('Land', 'Highland Hilltop Area', '2022-10-20'),
-    ('House', '987 Cedar St, Highland', '2022-11-25'),
-    ('Vehicle', 'Registered in Riverside DMV', '2022-12-30');
-
+INSERT INTO assets (asset_type, location, date_of_registration, village_id) VALUES 
+    ('Land', 'North Greenwood Plot 12', '2022-01-15', 1),
+    ('House', '123 Main St, Greenwood', '2022-03-20', 1),
+    ('Vehicle', 'Registered in Greenwood DMV', '2022-05-10', 1),
+    ('Land', 'South Greenwood Plot 7', '2022-02-25', 1),
+    ('House', '456 Elm St, Sunnyvale', '2022-04-15', 2),
+    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-06-20', 2),
+    ('Land', 'Riverside Agricultural Zone', '2022-07-10', 3),
+    ('House', '654 Maple St, Meadowbrook', '2022-08-05', 4),
+    ('Vehicle', 'Registered in Sunnyvale DMV', '2022-09-15', 2),
+    ('Land', 'Highland Hilltop Area', '2022-10-20', 5),
+    ('House', '987 Cedar St, Highland', '2022-11-25', 5),
+    ('Vehicle', 'Registered in Riverside DMV', '2022-12-30', 3);
+    
 -- Insert schemes
 INSERT INTO schemes (name, description) VALUES 
     ('PM Awas Yojana', 'Housing scheme for rural areas'),

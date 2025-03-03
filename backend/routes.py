@@ -395,6 +395,7 @@ def citizen_enrolled_schemes():
         }), 200
 
 @app.route('/query_table', methods=['POST'])
+@jwt_required()
 def query_table():
     try:
         data = request.get_json()
@@ -515,6 +516,7 @@ def query_table():
         }), 500
     
 @app.route('/update', methods=['POST'])
+@jwt_required()
 def update_record():
     try:
         data = request.get_json()
@@ -587,7 +589,7 @@ def update_record():
 
 
 @app.route('/insert', methods=['POST'])
-# @jwt_required()
+@jwt_required()
 def insert_record():
     try:
         data = request.get_json()
@@ -630,6 +632,7 @@ def insert_record():
 
 
 @app.route('/delete', methods=['POST'])
+@jwt_required()
 def delete():
     try:
         data = request.get_json()
@@ -747,6 +750,7 @@ def delete():
         }), 500
 
 @app.route('/get_stats', methods=['POST'])
+@jwt_required()
 def get_stats():
     try:
         data = request.get_json()
@@ -898,6 +902,7 @@ def get_stats():
         }), 500
     
 @app.route('/universal', methods=['POST'])
+@jwt_required()
 def universal():
     cursor = None
     try:

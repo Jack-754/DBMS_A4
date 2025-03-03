@@ -72,7 +72,7 @@
     flex: 1;
     min-width: 200px;
     font-size: 14px;
-    /* color: #1a202c; */
+    color: #1a202c;
     transition: all 0.2s ease;
 }
 

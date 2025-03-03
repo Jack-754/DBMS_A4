@@ -107,9 +107,7 @@ CREATE TABLE IF NOT EXISTS certificates (
 CREATE TABLE IF NOT EXISTS assets (
     asset_id SERIAL PRIMARY KEY,
     asset_type VARCHAR(50) NOT NULL,
-    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE,
-    owner_id INT NOT NULL,
-    FOREIGN KEY (owner_id) REFERENCES citizens(id) ON DELETE CASCADE
+    date_of_registration DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
 -- PANCHAYAT EMPLOYEES TABLE (Depends on CITIZENS and VILLAGE)
@@ -194,7 +192,7 @@ UPDATE households SET head_of_household = 3 WHERE id = 2;
 -- Insert into users
 INSERT INTO users (username, pswd, user_type, citizen_id)
 VALUES 
-    ('john_doe', 'hashedpassword1', 'USER', 1),
+    ('john_doe', 'hashedpassword1', 'CITIZEN', 1),
     ('jane_doe', 'hashedpassword2', 'PANCHAYAT_EMPLOYEES', 2),
     ('admin_user', 'hashedpassword3', 'SYSTEM_ADMINISTRATOR', NULL);
 
@@ -217,10 +215,10 @@ VALUES
     ('Income Certificate', 1);
 
 -- Insert into assets
-INSERT INTO assets (asset_type, owner_id)
+INSERT INTO assets (asset_type)
 VALUES 
-    ('Land', 1),
-    ('Vehicle', 2);
+    ('Land'),
+    ('Vehicle');
 
 -- Insert into panchayat_employees
 INSERT INTO panchayat_employees (citizen_id, position, salary, village_id)

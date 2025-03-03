@@ -12,7 +12,7 @@ class User(UserMixin):
         self.id = userId  # Required by Flask-Login
         self.username = username
         self.citizen_id = citizen_id
-        self.type = type
+        self.user_type = type
 
     @staticmethod
     def get_user_by_id(userId):
